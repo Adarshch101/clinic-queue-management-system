@@ -1,0 +1,254 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  PATIENT
+  RECEPTIONIST
+  DOCTOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CHECKED_IN
+  CANCELLED
+  NO_SHOW
+}
+
+enum TokenStatus {
+  WAITING
+  CALLED
+  IN_CONSULTATION
+  COMPLETED
+  SKIPPED
+  RECALLED
+}
+
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+model Clinic {
+  id              String           @id @default(uuid())
+  name            String
+  subdomain       String           @unique
+  logoUrl         String?
+  primaryColor    String           @default("#3b82f6")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  // Relations
+  doctors         Doctor[]
+  receptionists   Receptionist[]
+  patients        Patient[]
+  appointments    Appointment[]
+  queueTokens     QueueToken[]
+  workingHours    WorkingHours[]
+  holidays        Holiday[]
+  subscriptions   Subscription[]
+  auditLogs       AuditLog[]
+}
+
+model Doctor {
+  id              String           @id @default(uuid())
+  clinicId        String
+  userId          String           @unique // Linked to Supabase Auth ID
+  name            String
+  email           String
+  phone           String?
+  specialization  String
+  roomNumber      String
+  isActive        String           @default("true")
+  averageConsultationTime Int      @default(10)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  clinic          Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments    Appointment[]
+  queueTokens     QueueToken[]
+  workingHours    WorkingHours[]
+  visits          Visit[]
+}
+
+model Receptionist {
+  id              String           @id @default(uuid())
+  clinicId        String
+  userId          String           @unique // Linked to Supabase Auth ID
+  name            String
+  email           String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  clinic          Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+}
+
+model Patient {
+  id              String           @id @default(uuid())
+  clinicId        String
+  userId          String?          @unique // Nullable if registered as walk-in without account
+  name            String
+  email           String?
+  phone           String
+  age             Int
+  gender          String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  clinic          Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments    Appointment[]
+  queueTokens     QueueToken[]
+  visits          Visit[]
+  medicalReports  MedicalReport[]
+}
+
+model Appointment {
+  id              String            @id @default(uuid())
+  clinicId        String
+  patientId       String
+  doctorId        String
+  dateTime        DateTime
+  reasonForVisit  String
+  status          AppointmentStatus @default(SCHEDULED)
+  qrCodeUrl       String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  clinic          Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor          Doctor            @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  queueToken      QueueToken?
+}
+
+model QueueToken {
+  id              String       @id @default(uuid())
+  clinicId        String
+  appointmentId   String?      @unique
+  patientId       String
+  doctorId        String
+  tokenNumber     String       // e.g. "A-012"
+  priority        Int          @default(0) // Higher = priority (emergencies)
+  isEmergency     Boolean      @default(false)
+  status          TokenStatus  @default(WAITING)
+  estimatedWait   Int          // Estimated wait time in minutes
+  reason          String       @default("")
+  calledAt        DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  clinic          Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  patient         Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor          Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model Visit {
+  id              String         @id @default(uuid())
+  patientId       String
+  doctorId        String
+  visitDate       DateTime       @default(now())
+  diagnosis       String
+  prescriptions   String         // JSON or string formatted list of medicines
+  notes           String?
+  createdAt       DateTime       @default(now())
+  
+  // Relations
+  patient         Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor          Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model MedicalReport {
+  id              String       @id @default(uuid())
+  patientId       String
+  fileName        String
+  fileUrl         String
+  fileType        String       // PDF, JPG, PNG etc.
+  reportType      String       // X-Ray, Blood Test, MRI, CT Scan, etc.
+  uploadedAt      DateTime     @default(now())
+
+  // Relations
+  patient         Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id              String       @id @default(uuid())
+  recipientUserId String       // Target user ID (Patient/Doctor/Receptionist)
+  title           String
+  body            String
+  channel         String       // PUSH, SMS, WHATSAPP, EMAIL
+  isRead          Boolean      @default(false)
+  sentAt          DateTime     @default(now())
+}
+
+model WorkingHours {
+  id              String       @id @default(uuid())
+  clinicId        String
+  doctorId        String?      // Null if it applies to the general clinic
+  dayOfWeek       Int          // 0-6 (Sunday to Saturday)
+  startTime       String       // e.g. "09:00"
+  endTime         String       // e.g. "17:00"
+  isClosed        Boolean      @default(false)
+
+  // Relations
+  clinic          Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  doctor          Doctor?      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model Holiday {
+  id              String       @id @default(uuid())
+  clinicId        String
+  date            DateTime
+  description     String
+  isClinicClosed  Boolean      @default(true)
+
+  // Relations
+  clinic          Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id              String           @id @default(uuid())
+  clinicId        String
+  tier            SubscriptionTier @default(FREE)
+  startDate       DateTime         @default(now())
+  endDate         DateTime
+  isActive        Boolean          @default(true)
+
+  // Relations
+  clinic          Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id              String       @id @default(uuid())
+  clinicId        String
+  userId          String       // Person performing the action
+  userRole        Role
+  action          String       // e.g., "EMERGENCY_PROMOTION", "SKIP_PATIENT"
+  details         String       // JSON text or detailed log message
+  ipAddress       String?
+  createdAt       DateTime     @default(now())
+
+  // Relations
+  clinic          Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+}
+
+model Permission {
+  id              String       @id @default(uuid())
+  role            Role
+  resource        String       // e.g., "APPOINTMENTS", "QUEUE", "BILLING"
+  action          String       // e.g., "CREATE", "READ", "UPDATE", "DELETE"
+}
