@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth, requireRole } from '@/lib/apiAuth';
+import { requireAuth, requireRole, sessionHasClinicAccess, type SessionPayload } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +18,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Token not found' }, { status: 404 });
     }
 
-    // Staff can cancel any token; a patient can only cancel their own
+    // Staff can cancel any token in their own clinic; a patient can only cancel their own.
+    let actingUserId = 'anonymous-patient';
+    let actingRole: string = 'PATIENT';
+
     const staffAuth = requireRole(request, ['RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN']);
     if (staffAuth instanceof NextResponse) {
       const patientAuth = requireAuth(request);
@@ -27,6 +30,13 @@ export async function POST(request: Request) {
       if (!patient || patient.id !== token.patientId) {
         return NextResponse.json({ error: 'You can only cancel your own token' }, { status: 403 });
       }
+    } else {
+      const staffSession: SessionPayload = staffAuth.session;
+      if (!sessionHasClinicAccess(staffSession, token.clinicId)) {
+        return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
+      }
+      actingUserId = staffSession.userId;
+      actingRole = staffSession.role;
     }
 
     // Update status to CANCELLED
@@ -41,10 +51,10 @@ export async function POST(request: Request) {
     await prisma.auditLog.create({
       data: {
         clinicId: token.clinicId,
-        userId: 'anonymous-patient',
-        userRole: 'PATIENT',
+        userId: actingUserId,
+        userRole: actingRole as 'PATIENT' | 'RECEPTIONIST' | 'ADMIN' | 'SUPER_ADMIN',
         action: 'CANCEL_QUEUE',
-        details: `Token: ${token.tokenNumber} was cancelled by the patient online`,
+        details: `Token: ${token.tokenNumber} was cancelled`,
       },
     });
 

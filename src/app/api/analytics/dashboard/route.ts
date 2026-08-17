@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AnalyticsService } from '@/lib/analyticsService';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
   const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
@@ -12,6 +12,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const clinicId = searchParams.get('clinicId');
     const dateRange = searchParams.get('dateRange') || '7d';
+
+    // Clinic admins may only view analytics for their own clinic.
+    if (!sessionHasClinicAccess(session, clinicId)) {
+      return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
+    }
 
     // 1. Audit Log: Log that analytics were viewed
     await prisma.auditLog.create({

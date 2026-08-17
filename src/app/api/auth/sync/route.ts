@@ -7,7 +7,7 @@ import { createSessionToken } from '@/lib/session';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { userId, name, email, role, age, gender, phone, specialization, roomNumber, accessToken } = body;
+    const { userId, name, email, role, age, gender, phone, accessToken } = body;
 
     if (!userId || !role) {
       return NextResponse.json({ error: 'Missing userId or role' }, { status: 400 });
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     // This prevents arbitrary profile creation / privileged session minting.
     const isPrivileged = ['DOCTOR', 'RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN'].includes(role);
     let verifiedUserId = userId;
+    let verifiedEmail = email?.toLowerCase();
     if (isPrivileged) {
       if (!accessToken) {
         return NextResponse.json({ error: 'Authentication required for privileged roles' }, { status: 401 });
@@ -26,6 +27,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Invalid session token' }, { status: 401 });
       }
       verifiedUserId = user.id;
+      verifiedEmail = user.email?.toLowerCase() || verifiedEmail;
+    }
+
+    // SUPER_ADMIN is only granted when the verified user's email matches the
+    // configured platform admin email. Nobody may mint a SUPER_ADMIN session otherwise.
+    const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@q-clinix.com').toLowerCase();
+    if (role === 'SUPER_ADMIN' && verifiedEmail !== superAdminEmail) {
+      return NextResponse.json({ error: 'You do not have platform administrator access' }, { status: 403 });
     }
 
     // 1. Find a clinic the user belongs to (no auto-seeding)
@@ -34,6 +43,74 @@ export async function POST(request: Request) {
     let profile: unknown = null;
     let clinicId = clinic?.id || '';
     let clinicStatus = clinic?.status || 'PENDING';
+    // Privileged staff roles must ALREADY exist (created by a clinic admin invite
+    // or clinic registration). Sync adopts the existing profile instead of
+    // auto-creating one, so a user can never self-assign an ADMIN/DOCTOR/STAFF role.
+    if (isPrivileged && role !== 'SUPER_ADMIN') {
+      // Determine the user's ACTUAL profile (by auth userId, then by email for
+      // profiles created by an admin invite before the invitee logged in).
+      let admin = await prisma.clinicAdmin.findUnique({ where: { userId: verifiedUserId }, include: { clinic: true } });
+      let doctor = await prisma.doctor.findUnique({ where: { userId: verifiedUserId } });
+      let receptionist = await prisma.receptionist.findUnique({ where: { userId: verifiedUserId } });
+
+      if (!admin && !doctor && !receptionist) {
+        const adminByEmail = await prisma.clinicAdmin.findFirst({ where: { email: verifiedEmail || '' } });
+        const doctorByEmail = await prisma.doctor.findFirst({ where: { email: verifiedEmail || '' } });
+        const receptionistByEmail = await prisma.receptionist.findFirst({ where: { email: verifiedEmail || '' } });
+
+        if (adminByEmail) {
+          admin = await prisma.clinicAdmin.update({
+            where: { id: adminByEmail.id },
+            data: { userId: verifiedUserId },
+            include: { clinic: true },
+          });
+        } else if (doctorByEmail) {
+          doctor = await prisma.doctor.update({
+            where: { id: doctorByEmail.id },
+            data: { userId: verifiedUserId },
+          });
+        } else if (receptionistByEmail) {
+          receptionist = await prisma.receptionist.update({
+            where: { id: receptionistByEmail.id },
+            data: { userId: verifiedUserId },
+          });
+        }
+      }
+
+      // The requested role must exactly match the user's real profile role.
+      const actualRole: 'ADMIN' | 'DOCTOR' | 'RECEPTIONIST' | null = admin
+        ? 'ADMIN'
+        : doctor
+          ? 'DOCTOR'
+          : receptionist
+            ? 'RECEPTIONIST'
+            : null;
+
+      if (!actualRole) {
+        return NextResponse.json(
+          { error: 'No matching staff profile found. Ask your clinic administrator for an invitation.' },
+          { status: 403 }
+        );
+      }
+      if (actualRole !== role) {
+        return NextResponse.json(
+          { error: 'Your account is not registered with the requested role' },
+          { status: 403 }
+        );
+      }
+
+      if (admin) {
+        clinicId = admin.clinicId;
+        clinicStatus = admin.clinic.status;
+        profile = admin;
+      } else if (doctor) {
+        clinicId = doctor.clinicId;
+        profile = doctor;
+      } else if (receptionist) {
+        clinicId = receptionist.clinicId;
+        profile = receptionist;
+      }
+    }
 
     // 3. Sync profile depending on role
     if (role === 'PATIENT') {
@@ -52,58 +129,6 @@ export async function POST(request: Request) {
         });
       }
       profile = patient;
-    } else if (role === 'DOCTOR') {
-      let doctor = await prisma.doctor.findUnique({ where: { userId: verifiedUserId } });
-      if (!doctor) {
-        doctor = await prisma.doctor.create({
-          data: {
-            clinicId: clinic?.id || '',
-            userId: verifiedUserId,
-            name: name || 'Dr. Physician',
-            email: email || '',
-            phone: phone || '',
-            specialization: specialization || 'General Practitioner',
-            roomNumber: roomNumber || 'Room 101',
-            isActive: 'true',
-          },
-        });
-      }
-      clinicId = doctor.clinicId;
-      profile = doctor;
-    } else if (role === 'RECEPTIONIST') {
-      let receptionist = await prisma.receptionist.findUnique({ where: { userId: verifiedUserId } });
-      if (!receptionist) {
-        receptionist = await prisma.receptionist.create({
-          data: {
-            clinicId: clinic?.id || '',
-            userId: verifiedUserId,
-            name: name || 'Reception Staff',
-            email: email || '',
-          },
-        });
-      }
-      clinicId = receptionist.clinicId;
-      profile = receptionist;
-    } else if (role === 'ADMIN') {
-      let admin = await prisma.clinicAdmin.findUnique({
-        where: { userId: verifiedUserId },
-        include: { clinic: true },
-      });
-      if (!admin) {
-        admin = await prisma.clinicAdmin.create({
-          data: {
-            clinicId: clinic?.id || '',
-            userId: verifiedUserId,
-            name: name || 'Clinic Admin',
-            email: email || '',
-            phone: phone || '',
-          },
-          include: { clinic: true },
-        });
-      }
-      clinicId = admin.clinicId;
-      clinicStatus = admin.clinic.status;
-      profile = admin;
     } else if (role === 'SUPER_ADMIN') {
       profile = { name: 'Super Admin', email };
       clinicStatus = 'VERIFIED';

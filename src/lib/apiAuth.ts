@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getSessionFromRequest, SessionPayload } from './session';
+import { getSessionFromRequest } from './session';
+import type { SessionPayload } from './session';
+
+export type { SessionPayload } from './session';
 
 export type Role = 'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN';
 
@@ -56,6 +59,34 @@ export function requireClinicAccess(
   if (session.role === 'SUPER_ADMIN') return result;
 
   if (clinicId && session.clinicId && clinicId !== session.clinicId) {
+    return forbidden('You do not have access to this clinic');
+  }
+  return result;
+}
+
+/**
+ * True when the session may operate on the given clinic: SUPER_ADMIN can
+ * operate on any clinic, every other role is restricted to their own clinic.
+ */
+export function sessionHasClinicAccess(session: SessionPayload, clinicId?: string | null): boolean {
+  if (session.role === 'SUPER_ADMIN') return true;
+  return !!clinicId && !!session.clinicId && session.clinicId === clinicId;
+}
+
+/**
+ * Requires an authenticated staff member (non-PATIENT) and returns their
+ * session only when the requested clinic matches their own (or they are
+ * a SUPER_ADMIN). Convenience wrapper for clinic-scoped APIs.
+ */
+export function requireStaffClinicAccess(
+  request: Request,
+  allowedRoles: Role[],
+  clinicId?: string | null
+): { session: SessionPayload } | NextResponse {
+  const result = requireRole(request, allowedRoles);
+  if (result instanceof NextResponse) return result;
+
+  if (!sessionHasClinicAccess(result.session, clinicId)) {
     return forbidden('You do not have access to this clinic');
   }
   return result;

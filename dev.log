@@ -1,0 +1,914 @@
+
+> smart-queue@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.11 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.39:3000
+- Environments: .env
+✓ Ready in 4.4s
+
+ GET /admin/super-dashboard 200 in 1424ms (next.js: 205ms, proxy.ts: 597ms, application-code: 622ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 2.1s (next.js: 2.1s, application-code: 13ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1982ms (next.js: 232ms, application-code: 1750ms)
+ POST /api/auth/sync 200 in 3.1s (next.js: 149ms, application-code: 2.9s)
+ GET /api/clinics/search?query= 200 in 5.3s (next.js: 2.0s, application-code: 3.3s)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 172ms (next.js: 79ms, application-code: 92ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 247ms (next.js: 69ms, application-code: 178ms)
+ POST /api/auth/sync 200 in 396ms (next.js: 11ms, application-code: 385ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 290ms (next.js: 57ms, application-code: 233ms)
+ GET /api/super-admin/stats 200 in 6.2s (next.js: 1777ms, application-code: 4.4s)
+ GET /api/super-admin/users 401 in 208ms (next.js: 200ms, application-code: 8ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 969ms (next.js: 9ms, application-code: 959ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 541ms (next.js: 19ms, application-code: 523ms)
+ POST /api/auth/sync 200 in 603ms (next.js: 4ms, application-code: 598ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 607ms (next.js: 11ms, application-code: 596ms)
+ GET /api/clinics/search?query= 200 in 631ms (next.js: 5ms, application-code: 626ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 222ms (next.js: 4ms, application-code: 218ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 611ms (next.js: 209ms, application-code: 403ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 531ms (next.js: 90ms, application-code: 442ms)
+ GET /admin/super-dashboard 200 in 74ms (next.js: 6ms, proxy.ts: 12ms, application-code: 56ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 21ms (next.js: 17ms, application-code: 4ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 79ms (next.js: 14ms, application-code: 65ms)
+ GET /api/clinics/search?query= 200 in 157ms (next.js: 12ms, application-code: 145ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 92ms (next.js: 22ms, application-code: 70ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 166ms (next.js: 13ms, application-code: 153ms)
+ POST /api/auth/sync 200 in 787ms (next.js: 6ms, application-code: 781ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 389ms (next.js: 3ms, application-code: 386ms)
+ POST /api/auth/sync 200 in 1393ms (next.js: 4ms, application-code: 1389ms)
+ GET /api/super-admin/stats 200 in 1460ms (next.js: 4ms, application-code: 1456ms)
+ GET /admin/super-dashboard 200 in 69ms (next.js: 8ms, proxy.ts: 49ms, application-code: 12ms)
+ GET /admin/super-dashboard 200 in 20ms (next.js: 4ms, proxy.ts: 7ms, application-code: 9ms)
+ GET /admin/super-dashboard 200 in 35ms (next.js: 5ms, proxy.ts: 6ms, application-code: 25ms)
+ GET /admin/super-dashboard 200 in 18ms (next.js: 4ms, proxy.ts: 6ms, application-code: 8ms)
+ GET /admin/super-dashboard 200 in 20ms (next.js: 4ms, proxy.ts: 7ms, application-code: 9ms)
+ GET /admin/super-dashboard 200 in 29ms (next.js: 4ms, proxy.ts: 6ms, application-code: 19ms)
+ GET /admin/super-dashboard 200 in 22ms (next.js: 4ms, proxy.ts: 8ms, application-code: 10ms)
+ GET /admin/super-dashboard 200 in 20ms (next.js: 4ms, proxy.ts: 8ms, application-code: 8ms)
+ GET /admin/super-dashboard 200 in 17ms (next.js: 4ms, proxy.ts: 6ms, application-code: 7ms)
+ GET /admin/super-dashboard 200 in 21ms (next.js: 4ms, proxy.ts: 6ms, application-code: 11ms)
+ GET /admin/super-dashboard 200 in 19ms (next.js: 6ms, proxy.ts: 6ms, application-code: 8ms)
+ GET /admin/super-dashboard 200 in 27ms (next.js: 4ms, proxy.ts: 5ms, application-code: 18ms)
+ GET /admin/super-dashboard 200 in 20ms (next.js: 5ms, proxy.ts: 7ms, application-code: 8ms)
+ GET /admin/super-dashboard 200 in 18ms (next.js: 6ms, proxy.ts: 6ms, application-code: 6ms)
+ GET /admin/super-dashboard 200 in 19ms (next.js: 4ms, proxy.ts: 6ms, application-code: 9ms)
+ GET /admin/super-dashboard 200 in 23ms (next.js: 4ms, proxy.ts: 6ms, application-code: 13ms)
+ GET /admin/super-dashboard 200 in 16ms (next.js: 4ms, proxy.ts: 5ms, application-code: 7ms)
+ GET /admin/super-dashboard 200 in 18ms (next.js: 6ms, proxy.ts: 6ms, application-code: 6ms)
+ GET /api/super-admin/users? 200 in 1016ms (next.js: 4ms, application-code: 1012ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].auditLog.create()` invocation in
+C:\Users\91870\Desktop\newProjectIdea\.next\dev\server\chunks\[root-of-the-server]__17h9lzn._.js:700:153
+
+  697     });
+  698 }
+  699 // 1. Audit Log: Log that analytics were viewed
+→ 700 await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].auditLog.create(
+Foreign key constraint violated on the constraint: `AuditLog_clinicId_fkey`
+ GET /api/analytics/dashboard?dateRange=7d&userId=75574bad-1f6e-412e-b4d9-6fb995560f33 500 in 956ms (next.js: 113ms, application-code: 842ms)
+ GET /admin/super-dashboard 200 in 16ms (next.js: 4ms, proxy.ts: 5ms, application-code: 6ms)
+ GET /admin/super-dashboard 200 in 19ms (next.js: 5ms, proxy.ts: 6ms, application-code: 8ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1014ms (next.js: 10ms, application-code: 1004ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 585ms (next.js: 14ms, application-code: 572ms)
+ POST /api/auth/sync 200 in 743ms (next.js: 4ms, application-code: 739ms)
+ GET /api/clinics/search?query= 200 in 766ms (next.js: 5ms, application-code: 761ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 749ms (next.js: 24ms, application-code: 725ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 189ms (next.js: 7ms, application-code: 183ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 277ms (next.js: 5ms, application-code: 272ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 490ms (next.js: 3ms, application-code: 487ms)
+ GET /admin/super-dashboard 200 in 248ms (next.js: 130ms, proxy.ts: 9ms, application-code: 109ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 20ms (next.js: 12ms, application-code: 8ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 138ms (next.js: 4ms, application-code: 134ms)
+ GET /api/clinics/search?query= 200 in 654ms (next.js: 5ms, application-code: 649ms)
+ GET /api/super-admin/users? 200 in 738ms (next.js: 23ms, application-code: 715ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 133ms (next.js: 20ms, application-code: 113ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 235ms (next.js: 14ms, application-code: 222ms)
+ POST /api/auth/sync 200 in 1246ms (next.js: 5ms, application-code: 1240ms)
+ GET /api/super-admin/stats 200 in 1344ms (next.js: 14ms, application-code: 1330ms)
+ POST /api/auth/sync 200 in 671ms (next.js: 5ms, application-code: 667ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 192ms (next.js: 5ms, application-code: 188ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1053ms (next.js: 22ms, application-code: 1031ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1717ms (next.js: 13ms, application-code: 1703ms)
+ POST /api/auth/sync 200 in 1831ms (next.js: 5ms, application-code: 1826ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 1832ms (next.js: 23ms, application-code: 1809ms)
+ GET /api/clinics/search?query= 200 in 1891ms (next.js: 4ms, application-code: 1887ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 281ms (next.js: 3ms, application-code: 278ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 339ms (next.js: 7ms, application-code: 332ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 560ms (next.js: 3ms, application-code: 557ms)
+ GET /admin/super-dashboard 200 in 119ms (next.js: 10ms, proxy.ts: 12ms, application-code: 97ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 26ms (next.js: 20ms, application-code: 7ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 88ms (next.js: 32ms, application-code: 57ms)
+ GET /api/clinics/search?query= 200 in 283ms (next.js: 12ms, application-code: 271ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 110ms (next.js: 19ms, application-code: 91ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 232ms (next.js: 13ms, application-code: 219ms)
+ POST /api/auth/sync 200 in 582ms (next.js: 6ms, application-code: 576ms)
+ GET /api/super-admin/users? 200 in 876ms (next.js: 22ms, application-code: 854ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 261ms (next.js: 3ms, application-code: 258ms)
+ POST /api/auth/sync 200 in 1461ms (next.js: 4ms, application-code: 1458ms)
+ GET /api/super-admin/stats 200 in 1627ms (next.js: 8ms, application-code: 1619ms)
+ GET /admin/super-dashboard 200 in 17ms (next.js: 4ms, proxy.ts: 6ms, application-code: 7ms)
+ GET /admin/super-dashboard 200 in 16ms (next.js: 4ms, proxy.ts: 5ms, application-code: 7ms)
+✓ Compiled in 1237ms
+ GET /admin/super-dashboard 200 in 1735ms (next.js: 307ms, proxy.ts: 1396ms, application-code: 32ms)
+[browser] Uncaught ReferenceError: navLinks is not defined
+    at DashboardLayout (src/components/layout/DashboardLayout.tsx:303:14)
+    at Set.forEach (<anonymous>)
+    at SuperAdminDashboard (src/app/admin/super-dashboard/page.tsx:403:5)
+  301 |           {/* Navigation Links list */}
+  302 |           <nav className="flex flex-col gap-1.5">
+> 303 |             {navLinks.map((link) => {
+      |              ^
+  304 |               const active = pathname === link.href || pathname.startsWith(link.href + '/');
+  305 |               return (
+  306 |                 <Link
+ GET /admin/super-dashboard 200 in 171ms (next.js: 7ms, proxy.ts: 10ms, application-code: 154ms)
+ GET /admin/super-dashboard 200 in 111ms (next.js: 7ms, proxy.ts: 7ms, application-code: 97ms)
+ GET /admin/super-dashboard 200 in 51ms (next.js: 6ms, proxy.ts: 8ms, application-code: 38ms)
+[browser] Uncaught Error: Rendered more hooks than during the previous render.
+✓ Compiled in 1155ms
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 247ms (next.js: 233ms, application-code: 14ms)
+ POST /api/auth/sync 200 in 1296ms (next.js: 451ms, application-code: 844ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 142ms (next.js: 77ms, application-code: 66ms)
+ GET /api/super-admin/stats 200 in 1895ms (next.js: 149ms, application-code: 1746ms)
+ GET /api/clinics/search?query= 200 in 1893ms (next.js: 285ms, application-code: 1608ms)
+ GET /admin/super-dashboard 200 in 1465ms (next.js: 235ms, proxy.ts: 128ms, application-code: 1101ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 31ms (next.js: 23ms, application-code: 7ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1338ms (next.js: 14ms, application-code: 1324ms)
+ GET /api/clinics/search?query= 200 in 1529ms (next.js: 17ms, application-code: 1512ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 350ms (next.js: 252ms, application-code: 98ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 451ms (next.js: 245ms, application-code: 205ms)
+ POST /api/auth/sync 200 in 2.2s (next.js: 3ms, application-code: 2.2s)
+ POST /api/auth/sync 200 in 1143ms (next.js: 28ms, application-code: 1116ms)
+ GET /api/super-admin/stats 200 in 3.0s (next.js: 10ms, application-code: 3.0s)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 297ms (next.js: 49ms, application-code: 248ms)
+✓ Compiled in 768ms
+ GET /admin/super-dashboard 200 in 447ms (next.js: 220ms, proxy.ts: 150ms, application-code: 77ms)
+✓ Compiled in 158ms
+ GET /admin/super-dashboard 200 in 733ms (next.js: 417ms, proxy.ts: 228ms, application-code: 88ms)
+ GET /api/super-admin/stats 200 in 2.9s (next.js: 335ms, application-code: 2.6s)
+✓ Compiled in 128ms
+ GET /admin/super-dashboard 200 in 401ms (next.js: 224ms, proxy.ts: 93ms, application-code: 84ms)
+✓ Compiled in 700ms
+ GET /admin/super-dashboard 200 in 381ms (next.js: 196ms, proxy.ts: 112ms, application-code: 73ms)
+[browser] The final argument passed to useEffect changed size between renders. The order and size of this array must remain constant.
+
+Previous: [settings, 7d]
+Incoming: [settings, 7d, ] 
+    at SuperAdminDashboard (src/app/admin/super-dashboard/page.tsx:286:12)
+    at Set.forEach (<anonymous>)
+  284 |   };
+  285 |
+> 286 |   useEffect(() => {
+      |            ^
+  287 |     if (activeTab !== 'global-analytics') return;
+  288 |     const id = setTimeout(() => fetchGlobalAnalytics(), 0);
+  289 |     return () => clearTimeout(id); (src/app/admin/super-dashboard/page.tsx:286:12)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 2.1s (next.js: 172ms, application-code: 1977ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 954ms (next.js: 385ms, application-code: 569ms)
+ GET /api/clinics/search?query= 200 in 1035ms (next.js: 61ms, application-code: 974ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 1036ms (next.js: 316ms, application-code: 721ms)
+ POST /api/auth/sync 200 in 1047ms (next.js: 192ms, application-code: 856ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 289ms (next.js: 58ms, application-code: 232ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 377ms (next.js: 66ms, application-code: 311ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 410ms (next.js: 54ms, application-code: 356ms)
+ GET /admin/super-dashboard 200 in 526ms (next.js: 8ms, proxy.ts: 12ms, application-code: 505ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 24ms (next.js: 16ms, application-code: 8ms)
+ GET /api/clinics/search?query= 200 in 295ms (next.js: 7ms, application-code: 288ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 214ms (next.js: 39ms, application-code: 174ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 111ms (next.js: 2ms, application-code: 109ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 265ms (next.js: 10ms, application-code: 255ms)
+ POST /api/auth/sync 200 in 854ms (next.js: 3ms, application-code: 851ms)
+ POST /api/auth/sync 200 in 1094ms (next.js: 5ms, application-code: 1089ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 183ms (next.js: 13ms, application-code: 170ms)
+ GET /api/super-admin/stats 200 in 1474ms (next.js: 97ms, application-code: 1377ms)
+✓ Compiled in 1801ms
+⨯ ./src/app/admin/super-dashboard/page.tsx:809:10
+Expected '</', got '}'
+  [90m807 |[0m
+  [90m808 |[0m           </div>
+[31m[1m>[0m [90m809 |[0m         )}
+  [90m    |[0m          [31m[1m^[0m
+  [90m810 |[0m
+  [90m811 |[0m         {[90m/* TAB 2: CLINICS DIRECTORY */[0m}
+  [90m812 |[0m         {activeTab === [32m'clinics'[0m && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component Browser]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component SSR]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component]
+
+
+[browser] ./src/app/admin/super-dashboard/page.tsx:809:10
+Expected '</', got '}'
+  807 |
+  808 |           </div>
+> 809 |         )}
+      |          ^
+  810 |
+  811 |         {/* TAB 2: CLINICS DIRECTORY */}
+  812 |         {activeTab === 'clinics' && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component Browser]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component SSR]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component] 
+[browser] ./src/app/admin/super-dashboard/page.tsx:809:10
+Expected '</', got '}'
+  807 |
+  808 |           </div>
+> 809 |         )}
+      |          ^
+  810 |
+  811 |         {/* TAB 2: CLINICS DIRECTORY */}
+  812 |         {activeTab === 'clinics' && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component Browser]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component SSR]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component] 
+○ Compiling /_error ...
+[browser] ./src/app/admin/super-dashboard/page.tsx:809:10
+Expected '</', got '}'
+  807 |
+  808 |           </div>
+> 809 |         )}
+      |          ^
+  810 |
+  811 |         {/* TAB 2: CLINICS DIRECTORY */}
+  812 |         {activeTab === 'clinics' && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component Browser]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component SSR]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component] 
+ GET /admin/super-dashboard 500 in 10.0s (next.js: 9.0s, proxy.ts: 279ms, application-code: 682ms)
+✓ Compiled in 6ms
+ GET /admin/super-dashboard 200 in 565ms (next.js: 237ms, proxy.ts: 187ms, application-code: 141ms)
+ GET /admin/super-dashboard 200 in 88ms (next.js: 8ms, proxy.ts: 8ms, application-code: 71ms)
+ GET /admin/super-dashboard 200 in 109ms (next.js: 12ms, proxy.ts: 19ms, application-code: 78ms)
+ GET /admin/super-dashboard 200 in 116ms (next.js: 56ms, proxy.ts: 22ms, application-code: 38ms)
+✓ Compiled in 133ms
+ GET /admin/super-dashboard 200 in 258ms (next.js: 136ms, proxy.ts: 77ms, application-code: 45ms)
+✓ Compiled in 145ms
+ GET /admin/super-dashboard 200 in 294ms (next.js: 148ms, proxy.ts: 88ms, application-code: 59ms)
+[browser] ./src/app/admin/super-dashboard/page.tsx:809:10
+Expected '</', got '}'
+  807 |
+  808 |           </div>
+> 809 |         )}
+      |          ^
+  810 |
+  811 |         {/* TAB 2: CLINICS DIRECTORY */}
+  812 |         {activeTab === 'clinics' && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component Browser]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component SSR]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component] 
+[browser] ./src/app/admin/super-dashboard/page.tsx:809:10
+Expected '</', got '}'
+  807 |
+  808 |           </div>
+> 809 |         )}
+      |          ^
+  810 |
+  811 |         {/* TAB 2: CLINICS DIRECTORY */}
+  812 |         {activeTab === 'clinics' && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component Browser]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component SSR]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component] 
+[browser] ./src/app/admin/super-dashboard/page.tsx:809:10
+Expected '</', got '}'
+  807 |
+  808 |           </div>
+> 809 |         )}
+      |          ^
+  810 |
+  811 |         {/* TAB 2: CLINICS DIRECTORY */}
+  812 |         {activeTab === 'clinics' && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component Browser]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component SSR]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component] 
+[browser] ./src/app/admin/super-dashboard/page.tsx:809:10
+Expected '</', got '}'
+  807 |
+  808 |           </div>
+> 809 |         )}
+      |          ^
+  810 |
+  811 |         {/* TAB 2: CLINICS DIRECTORY */}
+  812 |         {activeTab === 'clinics' && (
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component Browser]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/admin/super-dashboard/page.tsx [Client Component SSR]
+    ./src/app/admin/super-dashboard/page.tsx [Server Component] 
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1237ms (next.js: 226ms, application-code: 1011ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 4.6s (next.js: 2.8s, application-code: 1809ms)
+ GET /api/clinics/search?query= 200 in 4.9s (next.js: 222ms, application-code: 4.6s)
+ POST /api/auth/sync 200 in 4.8s (next.js: 738ms, application-code: 4.0s)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 5.0s (next.js: 2.4s, application-code: 2.6s)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 489ms (next.js: 147ms, application-code: 342ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 459ms (next.js: 150ms, application-code: 309ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 665ms (next.js: 281ms, application-code: 383ms)
+ GET /admin/super-dashboard 200 in 2.4s (next.js: 528ms, proxy.ts: 314ms, application-code: 1554ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 148ms (next.js: 139ms, application-code: 9ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 112ms (next.js: 37ms, application-code: 74ms)
+ GET /api/clinics/search?query= 200 in 342ms (next.js: 152ms, application-code: 190ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 158ms (next.js: 35ms, application-code: 124ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 195ms (next.js: 24ms, application-code: 171ms)
+ POST /api/auth/sync 200 in 490ms (next.js: 10ms, application-code: 480ms)
+ POST /api/auth/sync 200 in 548ms (next.js: 14ms, application-code: 533ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 215ms (next.js: 3ms, application-code: 211ms)
+ GET /api/super-admin/stats 200 in 1855ms (next.js: 125ms, application-code: 1730ms)
+ GET /api/admin/dashboard-stats?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 1025ms (next.js: 328ms, application-code: 697ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].auditLog.create()` invocation in
+C:\Users\91870\Desktop\newProjectIdea\.next\dev\server\chunks\[root-of-the-server]__17h9lzn._.js:700:153
+
+  697     });
+  698 }
+  699 // 1. Audit Log: Log that analytics were viewed
+→ 700 await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].auditLog.create(
+Foreign key constraint violated on the constraint: `AuditLog_clinicId_fkey`
+ GET /api/analytics/dashboard?dateRange=7d&userId=75574bad-1f6e-412e-b4d9-6fb995560f33 500 in 386ms (next.js: 238ms, application-code: 148ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].auditLog.create()` invocation in
+C:\Users\91870\Desktop\newProjectIdea\.next\dev\server\chunks\[root-of-the-server]__17h9lzn._.js:700:153
+
+  697     });
+  698 }
+  699 // 1. Audit Log: Log that analytics were viewed
+→ 700 await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].auditLog.create(
+Foreign key constraint violated on the constraint: `AuditLog_clinicId_fkey`
+ GET /api/analytics/dashboard?dateRange=12m&userId=75574bad-1f6e-412e-b4d9-6fb995560f33 500 in 1168ms (next.js: 4ms, application-code: 1164ms)
+ GET /api/admin/dashboard-stats?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 1284ms (next.js: 3ms, application-code: 1281ms)
+ GET /api/analytics/dashboard?dateRange=12m&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 2.7s (next.js: 6ms, application-code: 2.7s)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].auditLog.create()` invocation in
+C:\Users\91870\Desktop\newProjectIdea\.next\dev\server\chunks\[root-of-the-server]__17h9lzn._.js:700:153
+
+  697     });
+  698 }
+  699 // 1. Audit Log: Log that analytics were viewed
+→ 700 await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].auditLog.create(
+Foreign key constraint violated on the constraint: `AuditLog_clinicId_fkey`
+ GET /api/analytics/dashboard?dateRange=12m&userId=75574bad-1f6e-412e-b4d9-6fb995560f33 500 in 2.0s (next.js: 5ms, application-code: 2.0s)
+✓ Compiled in 467ms
+ GET /admin/super-dashboard 200 in 590ms (next.js: 327ms, proxy.ts: 171ms, application-code: 92ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1371ms (next.js: 123ms, application-code: 1247ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 818ms (next.js: 441ms, application-code: 377ms)
+ GET /api/clinics/search?query= 200 in 933ms (next.js: 86ms, application-code: 847ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 912ms (next.js: 329ms, application-code: 583ms)
+ POST /api/auth/sync 200 in 929ms (next.js: 237ms, application-code: 692ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 321ms (next.js: 156ms, application-code: 165ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 556ms (next.js: 181ms, application-code: 375ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 458ms (next.js: 110ms, application-code: 347ms)
+✓ Compiled in 780ms
+ GET /admin/super-dashboard 200 in 1151ms (next.js: 499ms, proxy.ts: 446ms, application-code: 206ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1379ms (next.js: 297ms, application-code: 1081ms)
+ GET /admin/super-dashboard 200 in 1044ms (next.js: 28ms, proxy.ts: 28ms, application-code: 988ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 204ms (next.js: 196ms, application-code: 8ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 690ms (next.js: 306ms, application-code: 384ms)
+ POST /api/auth/sync 200 in 971ms (next.js: 200ms, application-code: 771ms)
+ GET /api/clinics/search?query= 200 in 1411ms (next.js: 359ms, application-code: 1052ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 174ms (next.js: 97ms, application-code: 77ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 276ms (next.js: 85ms, application-code: 191ms)
+ POST /api/auth/sync 200 in 471ms (next.js: 5ms, application-code: 466ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 213ms (next.js: 62ms, application-code: 151ms)
+ GET /api/super-admin/stats 200 in 2.2s (next.js: 148ms, application-code: 2.0s)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1341ms (next.js: 15ms, application-code: 1326ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 328ms (next.js: 13ms, application-code: 315ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 439ms (next.js: 21ms, application-code: 418ms)
+ POST /api/auth/sync 200 in 543ms (next.js: 5ms, application-code: 539ms)
+ GET /api/clinics/search?query= 200 in 565ms (next.js: 3ms, application-code: 561ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 140ms (next.js: 3ms, application-code: 137ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 261ms (next.js: 85ms, application-code: 177ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 310ms (next.js: 77ms, application-code: 232ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 894ms (next.js: 23ms, application-code: 871ms)
+ GET /admin/super-dashboard 200 in 177ms (next.js: 13ms, proxy.ts: 23ms, application-code: 141ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 68ms (next.js: 60ms, application-code: 8ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 398ms (next.js: 30ms, application-code: 368ms)
+ GET /api/clinics/search?query= 200 in 1494ms (next.js: 35ms, application-code: 1459ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 160ms (next.js: 28ms, application-code: 132ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 240ms (next.js: 20ms, application-code: 219ms)
+ POST /api/auth/sync 200 in 1075ms (next.js: 130ms, application-code: 946ms)
+ GET /api/super-admin/stats 200 in 2.2s (next.js: 20ms, application-code: 2.2s)
+ POST /api/auth/sync 200 in 719ms (next.js: 7ms, application-code: 712ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 262ms (next.js: 5ms, application-code: 257ms)
+✓ Compiled in 1851ms
+ GET /admin/super-dashboard 200 in 1100ms (next.js: 536ms, proxy.ts: 417ms, application-code: 147ms)
+ GET /admin/super-dashboard 200 in 117ms (next.js: 9ms, proxy.ts: 11ms, application-code: 97ms)
+ GET /admin/super-dashboard 200 in 121ms (next.js: 32ms, proxy.ts: 37ms, application-code: 51ms)
+✓ Compiled in 168ms
+ GET /admin/super-dashboard 200 in 1240ms (next.js: 888ms, proxy.ts: 205ms, application-code: 147ms)
+ GET /admin/super-dashboard 200 in 544ms (next.js: 178ms, proxy.ts: 167ms, application-code: 199ms)
+ GET /admin/super-dashboard 200 in 266ms (next.js: 9ms, proxy.ts: 12ms, application-code: 244ms)
+ GET /admin/super-dashboard 200 in 171ms (next.js: 18ms, proxy.ts: 18ms, application-code: 135ms)
+ GET /admin/super-dashboard 200 in 319ms (next.js: 143ms, proxy.ts: 105ms, application-code: 71ms)
+✓ Compiled in 208ms
+ GET /admin/super-dashboard 200 in 772ms (next.js: 373ms, proxy.ts: 209ms, application-code: 190ms)
+ GET /admin/super-dashboard 200 in 153ms (next.js: 9ms, proxy.ts: 19ms, application-code: 125ms)
+ GET /admin/super-dashboard 200 in 86ms (next.js: 10ms, proxy.ts: 14ms, application-code: 63ms)
+ GET /admin/super-dashboard 200 in 354ms (next.js: 178ms, proxy.ts: 102ms, application-code: 74ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 4.1s (next.js: 595ms, application-code: 3.5s)
+ GET /admin/super-dashboard 200 in 1364ms (next.js: 28ms, proxy.ts: 40ms, application-code: 1296ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 174ms (next.js: 164ms, application-code: 10ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1268ms (next.js: 803ms, application-code: 465ms)
+ GET /api/clinics/search?query= 200 in 1770ms (next.js: 324ms, application-code: 1446ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 174ms (next.js: 18ms, application-code: 156ms)
+ POST /api/auth/sync 200 in 1756ms (next.js: 686ms, application-code: 1070ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 424ms (next.js: 89ms, application-code: 336ms)
+ POST /api/auth/sync 200 in 846ms (next.js: 8ms, application-code: 838ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 553ms (next.js: 71ms, application-code: 482ms)
+ GET /api/super-admin/stats 200 in 4.0s (next.js: 145ms, application-code: 3.8s)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 4.1s (next.js: 10ms, application-code: 4.1s)
+ POST /api/auth/sync 200 in 526ms (next.js: 4ms, application-code: 522ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 514ms (next.js: 6ms, application-code: 508ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 516ms (next.js: 16ms, application-code: 500ms)
+ GET /api/clinics/search?query= 200 in 659ms (next.js: 5ms, application-code: 653ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 323ms (next.js: 4ms, application-code: 318ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 475ms (next.js: 82ms, application-code: 393ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 461ms (next.js: 70ms, application-code: 390ms)
+ GET /admin/super-dashboard 200 in 77ms (next.js: 6ms, proxy.ts: 8ms, application-code: 62ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 15ms (next.js: 9ms, application-code: 6ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 91ms (next.js: 13ms, application-code: 78ms)
+ GET /api/clinics/search?query= 200 in 284ms (next.js: 4ms, application-code: 280ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 87ms (next.js: 10ms, application-code: 77ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 241ms (next.js: 16ms, application-code: 225ms)
+ POST /api/auth/sync 200 in 804ms (next.js: 5ms, application-code: 799ms)
+ POST /api/auth/sync 200 in 660ms (next.js: 4ms, application-code: 656ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 150ms (next.js: 3ms, application-code: 148ms)
+ GET /api/super-admin/stats 200 in 1357ms (next.js: 5ms, application-code: 1352ms)
+✓ Compiled in 737ms
+ GET /admin/super-dashboard 200 in 1354ms (next.js: 745ms, proxy.ts: 419ms, application-code: 191ms)
+ GET /admin/super-dashboard 200 in 184ms (next.js: 12ms, proxy.ts: 11ms, application-code: 161ms)
+ GET /admin/super-dashboard 200 in 107ms (next.js: 10ms, proxy.ts: 16ms, application-code: 81ms)
+✓ Compiled in 1058ms
+ GET /admin/super-dashboard 200 in 537ms (next.js: 207ms, proxy.ts: 143ms, application-code: 186ms)
+ GET /admin/super-dashboard 200 in 112ms (next.js: 10ms, proxy.ts: 15ms, application-code: 88ms)
+ GET /admin/super-dashboard 200 in 81ms (next.js: 10ms, proxy.ts: 13ms, application-code: 58ms)
+ GET /admin/super-dashboard 200 in 603ms (next.js: 4ms, proxy.ts: 8ms, application-code: 591ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 285ms (next.js: 276ms, application-code: 10ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 817ms (next.js: 367ms, application-code: 450ms)
+ POST /api/auth/sync 200 in 964ms (next.js: 226ms, application-code: 738ms)
+ GET /api/clinics/search?query= 200 in 1513ms (next.js: 199ms, application-code: 1313ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 250ms (next.js: 177ms, application-code: 73ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 323ms (next.js: 162ms, application-code: 161ms)
+ POST /api/auth/sync 200 in 469ms (next.js: 7ms, application-code: 463ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 255ms (next.js: 84ms, application-code: 171ms)
+ GET /api/super-admin/stats 200 in 2.3s (next.js: 112ms, application-code: 2.2s)
+ GET /admin/super-dashboard 200 in 20ms (next.js: 5ms, proxy.ts: 8ms, application-code: 7ms)
+✓ Compiled in 839ms
+ GET /admin/super-dashboard 200 in 420ms (next.js: 247ms, proxy.ts: 70ms, application-code: 103ms)
+ GET /admin/super-dashboard 200 in 153ms (next.js: 10ms, proxy.ts: 15ms, application-code: 128ms)
+ GET /admin/super-dashboard 200 in 77ms (next.js: 10ms, proxy.ts: 9ms, application-code: 59ms)
+ GET /admin/super-dashboard 200 in 21ms (next.js: 6ms, proxy.ts: 7ms, application-code: 8ms)
+ GET /admin/super-dashboard 200 in 50ms (next.js: 12ms, proxy.ts: 6ms, application-code: 32ms)
+ GET /admin/super-dashboard 200 in 61ms (next.js: 15ms, proxy.ts: 8ms, application-code: 37ms)
+ GET /api/super-admin/users? 200 in 3.6s (next.js: 135ms, application-code: 3.5s)
+ GET /admin/super-dashboard 200 in 55ms (next.js: 8ms, proxy.ts: 9ms, application-code: 38ms)
+ GET /admin/super-dashboard 200 in 46ms (next.js: 8ms, proxy.ts: 5ms, application-code: 32ms)
+ GET /admin/super-dashboard 200 in 61ms (next.js: 8ms, proxy.ts: 9ms, application-code: 44ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 4.8s (next.js: 81ms, application-code: 4.7s)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1237ms (next.js: 454ms, application-code: 783ms)
+ POST /api/auth/sync 200 in 1335ms (next.js: 700ms, application-code: 635ms)
+ GET /api/clinics/search?query= 200 in 1399ms (next.js: 474ms, application-code: 925ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 1344ms (next.js: 403ms, application-code: 941ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 295ms (next.js: 63ms, application-code: 231ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 362ms (next.js: 74ms, application-code: 289ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 472ms (next.js: 53ms, application-code: 420ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 560ms (next.js: 5ms, application-code: 555ms)
+ GET /admin/super-dashboard 200 in 525ms (next.js: 5ms, proxy.ts: 10ms, application-code: 510ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 111ms (next.js: 101ms, application-code: 9ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 2.2s (next.js: 54ms, application-code: 2.2s)
+ GET /api/clinics/search?query= 200 in 2.7s (next.js: 79ms, application-code: 2.6s)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 114ms (next.js: 19ms, application-code: 95ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 200ms (next.js: 14ms, application-code: 186ms)
+ POST /api/auth/sync 200 in 2.7s (next.js: 6ms, application-code: 2.7s)
+ GET /api/super-admin/stats 200 in 3.3s (next.js: 68ms, application-code: 3.2s)
+ POST /api/auth/sync 200 in 634ms (next.js: 6ms, application-code: 628ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 231ms (next.js: 4ms, application-code: 227ms)
+✓ Compiled in 646ms
+ GET /admin/super-dashboard 200 in 541ms (next.js: 276ms, proxy.ts: 124ms, application-code: 141ms)
+ GET /admin/super-dashboard 200 in 119ms (next.js: 6ms, proxy.ts: 7ms, application-code: 106ms)
+ GET /admin/super-dashboard 200 in 65ms (next.js: 5ms, proxy.ts: 10ms, application-code: 50ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1699ms (next.js: 595ms, application-code: 1104ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1583ms (next.js: 997ms, application-code: 586ms)
+ POST /api/auth/sync 200 in 1613ms (next.js: 575ms, application-code: 1038ms)
+ GET /api/clinics/search?query= 200 in 1885ms (next.js: 172ms, application-code: 1713ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 2.3s (next.js: 743ms, application-code: 1521ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 1174ms (next.js: 549ms, application-code: 625ms)
+ GET /admin/super-dashboard 200 in 2.1s (next.js: 47ms, proxy.ts: 19ms, application-code: 2.0s)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 2.6s (next.js: 400ms, application-code: 2.2s)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 134ms (next.js: 127ms, application-code: 7ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 950ms (next.js: 31ms, application-code: 920ms)
+ GET /api/clinics/search?query= 200 in 2.2s (next.js: 118ms, application-code: 2.1s)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 98ms (next.js: 28ms, application-code: 70ms)
+ GET /api/appointments?role=SUPER_ADMIN&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 170ms (next.js: 17ms, application-code: 153ms)
+ POST /api/auth/sync 200 in 2.6s (next.js: 9ms, application-code: 2.6s)
+ POST /api/auth/sync 200 in 664ms (next.js: 7ms, application-code: 657ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 164ms (next.js: 5ms, application-code: 159ms)
+ GET /api/super-admin/stats 200 in 3.4s (next.js: 105ms, application-code: 3.3s)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 4.4s (next.js: 109ms, application-code: 4.3s)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1128ms (next.js: 457ms, application-code: 671ms)
+ POST /api/auth/sync 200 in 1156ms (next.js: 28ms, application-code: 1128ms)
+ GET /api/clinics/search?query= 200 in 1261ms (next.js: 25ms, application-code: 1237ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 1159ms (next.js: 388ms, application-code: 771ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 340ms (next.js: 31ms, application-code: 309ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 346ms (next.js: 8ms, application-code: 338ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 696ms (next.js: 193ms, application-code: 503ms)
+✓ Compiled in 16.2s
+ GET /admin/super-dashboard 200 in 2.9s (next.js: 631ms, proxy.ts: 358ms, application-code: 1905ms)
+ GET /admin/super-dashboard 200 in 553ms (next.js: 19ms, proxy.ts: 8ms, application-code: 526ms)
+ GET /admin/super-dashboard 200 in 504ms (next.js: 38ms, proxy.ts: 38ms, application-code: 429ms)
+ GET /admin/super-dashboard 200 in 501ms (next.js: 112ms, proxy.ts: 36ms, application-code: 353ms)
+ GET /admin/super-dashboard 200 in 501ms (next.js: 186ms, proxy.ts: 38ms, application-code: 278ms)
+ GET /admin/super-dashboard 200 in 508ms (next.js: 247ms, proxy.ts: 36ms, application-code: 225ms)
+ GET /admin/super-dashboard 200 in 506ms (next.js: 294ms, proxy.ts: 48ms, application-code: 164ms)
+ GET /admin/super-dashboard 200 in 448ms (next.js: 10ms, proxy.ts: 19ms, application-code: 418ms)
+ GET /admin/super-dashboard 200 in 374ms (next.js: 30ms, proxy.ts: 41ms, application-code: 303ms)
+ GET /admin/super-dashboard 200 in 373ms (next.js: 83ms, proxy.ts: 41ms, application-code: 249ms)
+ GET /admin/super-dashboard 200 in 420ms (next.js: 140ms, proxy.ts: 45ms, application-code: 235ms)
+ GET /admin/super-dashboard 200 in 518ms (next.js: 185ms, proxy.ts: 34ms, application-code: 299ms)
+ GET /admin/super-dashboard 200 in 523ms (next.js: 235ms, proxy.ts: 32ms, application-code: 256ms)
+ GET /admin/super-dashboard 200 in 476ms (next.js: 13ms, proxy.ts: 13ms, application-code: 450ms)
+ GET /admin/super-dashboard 200 in 361ms (next.js: 26ms, proxy.ts: 29ms, application-code: 306ms)
+ GET /admin/super-dashboard 200 in 360ms (next.js: 77ms, proxy.ts: 29ms, application-code: 255ms)
+ GET /admin/super-dashboard 200 in 400ms (next.js: 124ms, proxy.ts: 28ms, application-code: 248ms)
+ GET /admin/super-dashboard 200 in 396ms (next.js: 92ms, proxy.ts: 122ms, application-code: 182ms)
+ GET /admin/super-dashboard 200 in 402ms (next.js: 137ms, proxy.ts: 124ms, application-code: 140ms)
+ GET /admin/super-dashboard 200 in 459ms (next.js: 14ms, proxy.ts: 12ms, application-code: 434ms)
+ GET /admin/super-dashboard 200 in 987ms (next.js: 56ms, proxy.ts: 26ms, application-code: 905ms)
+ GET /admin/super-dashboard 200 in 989ms (next.js: 93ms, proxy.ts: 26ms, application-code: 870ms)
+ GET /admin/super-dashboard 200 in 976ms (next.js: 123ms, proxy.ts: 54ms, application-code: 799ms)
+ GET /admin/super-dashboard 200 in 987ms (next.js: 64ms, proxy.ts: 142ms, application-code: 781ms)
+ GET /admin/super-dashboard 200 in 1001ms (next.js: 214ms, proxy.ts: 132ms, application-code: 655ms)
+✓ Compiled in 1229ms
+✓ Compiled in 15.1s
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 1805ms (next.js: 667ms, application-code: 1137ms)
+ GET /admin/super-dashboard 200 in 2.0s (next.js: 439ms, proxy.ts: 263ms, application-code: 1319ms)
+ GET /api/auth/session?userId=75574bad-1f6e-412e-b4d9-6fb995560f33&email=kumaradarsh1234567%40gmail.com 200 in 842ms (next.js: 816ms, application-code: 25ms)
+ POST /api/auth/signout 200 in 797ms (next.js: 731ms, application-code: 67ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 3.2s (next.js: 1744ms, application-code: 1501ms)
+ GET /api/notifications?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 21ms (next.js: 13ms, application-code: 8ms)
+ POST /api/auth/sync 200 in 3.8s (next.js: 1030ms, application-code: 2.8s)
+ POST /api/auth/sync 200 in 537ms (next.js: 5ms, application-code: 532ms)
+ GET /api/clinics/search?query= 200 in 5.1s (next.js: 775ms, application-code: 4.4s)
+ POST /api/auth/audit 200 in 731ms (next.js: 343ms, application-code: 388ms)
+ GET /api/notifications?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 200 in 163ms (next.js: 87ms, application-code: 76ms)
+ GET /admin/super-dashboard 200 in 26ms (next.js: 8ms, proxy.ts: 8ms, application-code: 10ms)
+ POST /api/auth/sync 200 in 307ms (next.js: 4ms, application-code: 304ms)
+ GET /api/appointments?role=PATIENT&userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 393ms (next.js: 81ms, application-code: 312ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 316ms (next.js: 83ms, application-code: 234ms)
+ GET /api/reports?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 200 in 1773ms (next.js: 86ms, application-code: 1687ms)
+ GET /api/super-admin/stats 200 in 7.3s (next.js: 308ms, application-code: 7.0s)
+ GET /api/visits?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 200 in 2.2s (next.js: 80ms, application-code: 2.1s)
+○ Compiling /_not-found/page ...
+ GET /admin/super-dashboard/logout 404 in 10.8s (next.js: 10.5s, proxy.ts: 8ms, application-code: 313ms)
+ GET /api/auth/me 200 in 4.6s (next.js: 641ms, application-code: 4.0s)
+ GET /api/clinics/search?query= 200 in 4.7s (next.js: 15ms, application-code: 4.6s)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 347ms (next.js: 170ms, application-code: 177ms)
+ POST /api/auth/sync 200 in 371ms (next.js: 88ms, application-code: 283ms)
+ POST /api/auth/sync 200 in 275ms (next.js: 29ms, application-code: 246ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 289ms (next.js: 4ms, application-code: 285ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 476ms (next.js: 77ms, application-code: 398ms)
+ GET /api/clinics/search?query= 200 in 955ms (next.js: 19ms, application-code: 936ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 1069ms (next.js: 42ms, application-code: 1026ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 334ms (next.js: 6ms, application-code: 328ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 441ms (next.js: 13ms, application-code: 428ms)
+ GET / 200 in 295ms (next.js: 255ms, application-code: 39ms)
+ GET /api/clinics/search?query=&location=&pincode=&openNow=false&hasQueue=false&clinicType=All&sortBy=shortest_wait 200 in 290ms (next.js: 4ms, application-code: 286ms)
+ GET /api/clinics/search?query=&location=&pincode=&openNow=false&hasQueue=false&clinicType=All&sortBy=shortest_wait 200 in 250ms (next.js: 6ms, application-code: 244ms)
+✓ Compiled in 10.9s
+[browser] React does not recognize the `alignItems` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `alignitems` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+    at Set.forEach (<anonymous>) (<anonymous>)
+[browser] React does not recognize the `flexWrap` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `flexwrap` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+    at Set.forEach (<anonymous>) (<anonymous>)
+[browser] React does not recognize the `justifyContent` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `justifycontent` instead. If you accidentally passed it from a parent component, remove it from the DOM element. 
+    at Set.forEach (<anonymous>) (<anonymous>)
+ GET / 200 in 2.7s (next.js: 1923ms, application-code: 742ms)
+ GET / 200 in 436ms (next.js: 355ms, application-code: 81ms)
+ GET / 200 in 279ms (next.js: 9ms, application-code: 270ms)
+ GET / 200 in 279ms (next.js: 68ms, application-code: 211ms)
+ GET / 200 in 225ms (next.js: 113ms, application-code: 112ms)
+ GET / 200 in 230ms (next.js: 71ms, application-code: 159ms)
+ GET / 200 in 57ms (next.js: 5ms, application-code: 51ms)
+ GET / 200 in 265ms (next.js: 11ms, application-code: 254ms)
+ GET / 200 in 212ms (next.js: 123ms, application-code: 89ms)
+ GET / 200 in 267ms (next.js: 60ms, application-code: 208ms)
+ GET / 200 in 215ms (next.js: 59ms, application-code: 156ms)
+ GET / 200 in 83ms (next.js: 6ms, application-code: 77ms)
+ GET / 200 in 119ms (next.js: 5ms, application-code: 114ms)
+ GET / 200 in 88ms (next.js: 7ms, application-code: 81ms)
+ GET / 200 in 87ms (next.js: 39ms, application-code: 49ms)
+ GET / 200 in 222ms (next.js: 9ms, application-code: 213ms)
+ GET / 200 in 223ms (next.js: 47ms, application-code: 175ms)
+ GET / 200 in 222ms (next.js: 81ms, application-code: 142ms)
+ GET / 200 in 184ms (next.js: 80ms, application-code: 104ms)
+ GET / 200 in 184ms (next.js: 115ms, application-code: 69ms)
+ GET / 200 in 257ms (next.js: 11ms, application-code: 247ms)
+ GET / 200 in 255ms (next.js: 102ms, application-code: 153ms)
+ GET / 200 in 260ms (next.js: 63ms, application-code: 197ms)
+ GET / 200 in 206ms (next.js: 100ms, application-code: 106ms)
+ GET / 200 in 205ms (next.js: 138ms, application-code: 67ms)
+ GET / 200 in 59ms (next.js: 25ms, application-code: 35ms)
+ GET /api/clinics/search?query=&location=&pincode=&openNow=false&hasQueue=false&clinicType=All&sortBy=shortest_wait 200 in 5.0s (next.js: 320ms, application-code: 4.7s)
+✓ Compiled in 3.5s
+ GET / 200 in 530ms (next.js: 334ms, application-code: 196ms)
+ GET / 200 in 188ms (next.js: 20ms, application-code: 168ms)
+ GET / 200 in 107ms (next.js: 7ms, application-code: 100ms)
+ GET / 200 in 74ms (next.js: 8ms, application-code: 65ms)
+ GET /api/clinics/search?query=&location=&pincode=&openNow=false&hasQueue=false&clinicType=All&sortBy=shortest_wait 200 in 1841ms (next.js: 559ms, application-code: 1282ms)
+✓ Compiled in 232ms
+ GET / 200 in 432ms (next.js: 281ms, application-code: 152ms)
+✓ Compiled in 770ms
+ GET / 200 in 582ms (next.js: 406ms, application-code: 176ms)
+ GET / 200 in 301ms (next.js: 12ms, application-code: 289ms)
+ GET / 200 in 259ms (next.js: 5ms, application-code: 254ms)
+ GET / 200 in 201ms (next.js: 66ms, application-code: 136ms)
+ GET / 200 in 205ms (next.js: 14ms, application-code: 191ms)
+ GET / 200 in 201ms (next.js: 105ms, application-code: 96ms)
+ GET / 200 in 200ms (next.js: 143ms, application-code: 56ms)
+✓ Compiled in 181ms
+ GET / 200 in 709ms (next.js: 153ms, application-code: 557ms)
+ GET / 200 in 436ms (next.js: 5ms, application-code: 431ms)
+ GET / 200 in 400ms (next.js: 71ms, application-code: 329ms)
+ GET / 200 in 401ms (next.js: 163ms, application-code: 238ms)
+ GET / 200 in 406ms (next.js: 10ms, application-code: 397ms)
+ GET / 200 in 404ms (next.js: 226ms, application-code: 179ms)
+ GET / 200 in 63ms (next.js: 8ms, application-code: 55ms)
+✓ Compiled in 205ms
+ GET / 200 in 471ms (next.js: 220ms, application-code: 251ms)
+ GET / 200 in 206ms (next.js: 5ms, application-code: 201ms)
+ GET / 200 in 204ms (next.js: 11ms, application-code: 194ms)
+ GET / 200 in 201ms (next.js: 77ms, application-code: 124ms)
+ GET / 200 in 204ms (next.js: 43ms, application-code: 161ms)
+ GET / 200 in 202ms (next.js: 120ms, application-code: 82ms)
+ GET / 200 in 49ms (next.js: 7ms, application-code: 41ms)
+✓ Compiled in 247ms
+ GET / 200 in 157ms (next.js: 116ms, application-code: 41ms)
+✓ Compiled in 133ms
+✓ Compiled in 139ms
+✓ Compiled in 1325ms
+✓ Compiled in 95ms
+✓ Compiled in 109ms
+ GET /admin/super-dashboard 200 in 2.4s (next.js: 1704ms, proxy.ts: 33ms, application-code: 637ms)
+ GET /api/super-admin/stats 200 in 4.7s (next.js: 946ms, application-code: 3.8s)
+ GET /admin/super-dashboard 200 in 1334ms (next.js: 31ms, proxy.ts: 18ms, application-code: 1285ms)
+ GET /api/auth/me 200 in 5.8s (next.js: 306ms, application-code: 5.5s)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 650ms (next.js: 177ms, application-code: 473ms)
+ GET /api/clinics/search?query= 200 in 6.6s (next.js: 211ms, application-code: 6.4s)
+ POST /api/auth/sync 200 in 1064ms (next.js: 617ms, application-code: 447ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 259ms (next.js: 5ms, application-code: 254ms)
+ POST /api/auth/sync 200 in 357ms (next.js: 7ms, application-code: 350ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 507ms (next.js: 172ms, application-code: 334ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 1056ms (next.js: 193ms, application-code: 863ms)
+ GET /api/super-admin/stats 200 in 8.0s (next.js: 14ms, application-code: 8.0s)
+ GET /api/clinics/search?query= 200 in 1442ms (next.js: 6ms, application-code: 1436ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 623ms (next.js: 303ms, application-code: 320ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 599ms (next.js: 167ms, application-code: 432ms)
+ GET /admin/super-dashboard 200 in 170ms (next.js: 13ms, proxy.ts: 14ms, application-code: 143ms)
+ GET /api/clinics/search?query= 200 in 297ms (next.js: 26ms, application-code: 272ms)
+ GET /api/auth/me 200 in 896ms (next.js: 45ms, application-code: 851ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 166ms (next.js: 49ms, application-code: 117ms)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 369ms (next.js: 30ms, application-code: 339ms)
+ POST /api/auth/sync 200 in 376ms (next.js: 11ms, application-code: 366ms)
+ GET /api/clinics/search?query= 200 in 409ms (next.js: 7ms, application-code: 402ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 397ms (next.js: 22ms, application-code: 375ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 596ms (next.js: 10ms, application-code: 586ms)
+ GET /api/super-admin/stats 200 in 2.2s (next.js: 11ms, application-code: 2.2s)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 200 in 627ms (next.js: 6ms, application-code: 621ms)
+ GET /admin/super-dashboard 200 in 219ms (next.js: 13ms, proxy.ts: 14ms, application-code: 192ms)
+ GET /api/clinics/search?query= 200 in 1745ms (next.js: 25ms, application-code: 1720ms)
+ POST /api/auth/signout 200 in 120ms (next.js: 87ms, application-code: 33ms)
+ GET /api/appointments?role=PATIENT&userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 401 in 42ms (next.js: 29ms, application-code: 13ms)
+ GET /api/notifications?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 65ms (next.js: 50ms, application-code: 15ms)
+ GET /api/reports?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 17ms (next.js: 5ms, application-code: 12ms)
+ GET /api/visits?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 18ms (next.js: 6ms, application-code: 13ms)
+ GET /api/auth/me 200 in 4.8s (next.js: 40ms, application-code: 4.8s)
+ GET /api/appointments?role=PATIENT&userId=75574bad-1f6e-412e-b4d9-6fb995560f33&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 401 in 53ms (next.js: 43ms, application-code: 10ms)
+ POST /api/auth/sync 200 in 1875ms (next.js: 11ms, application-code: 1864ms)
+ GET /api/notifications?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 401 in 23ms (next.js: 14ms, application-code: 9ms)
+ GET /api/reports?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 401 in 43ms (next.js: 27ms, application-code: 16ms)
+ GET /login 200 in 1960ms (next.js: 1635ms, proxy.ts: 18ms, application-code: 306ms)
+ GET /api/visits?userId=75574bad-1f6e-412e-b4d9-6fb995560f33 401 in 18ms (next.js: 9ms, application-code: 9ms)
+ GET /api/clinics/search?query= 200 in 228ms (next.js: 10ms, application-code: 218ms)
+ POST /api/auth/sync 200 in 335ms (next.js: 20ms, application-code: 315ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 314ms (next.js: 5ms, application-code: 308ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 412ms (next.js: 74ms, application-code: 337ms)
+ GET /api/super-admin/stats 200 in 6.1s (next.js: 9ms, application-code: 6.1s)
+ GET /login 200 in 3.4s (next.js: 1526ms, proxy.ts: 565ms, application-code: 1279ms)
+ GET /login 200 in 1072ms (next.js: 53ms, proxy.ts: 76ms, application-code: 942ms)
+ GET /login 200 in 799ms (next.js: 111ms, proxy.ts: 87ms, application-code: 602ms)
+ GET /login 200 in 778ms (next.js: 474ms, proxy.ts: 78ms, application-code: 227ms)
+ GET /login 200 in 788ms (next.js: 325ms, proxy.ts: 82ms, application-code: 381ms)
+ GET /login 200 in 798ms (next.js: 223ms, proxy.ts: 83ms, application-code: 492ms)
+ GET /login 200 in 1010ms (next.js: 16ms, proxy.ts: 551ms, application-code: 443ms)
+ GET /login 200 in 981ms (next.js: 51ms, proxy.ts: 22ms, application-code: 907ms)
+ GET /login 200 in 966ms (next.js: 230ms, proxy.ts: 290ms, application-code: 446ms)
+ GET /login 200 in 974ms (next.js: 109ms, proxy.ts: 289ms, application-code: 575ms)
+ GET /login 200 in 964ms (next.js: 318ms, proxy.ts: 287ms, application-code: 359ms)
+ GET /login 200 in 891ms (next.js: 389ms, proxy.ts: 199ms, application-code: 302ms)
+ GET /login 200 in 862ms (next.js: 15ms, proxy.ts: 495ms, application-code: 351ms)
+ GET /login 200 in 771ms (next.js: 54ms, proxy.ts: 27ms, application-code: 690ms)
+ GET /login 200 in 804ms (next.js: 52ms, proxy.ts: 177ms, application-code: 576ms)
+ GET /login 200 in 799ms (next.js: 137ms, proxy.ts: 175ms, application-code: 487ms)
+ GET /login 200 in 688ms (next.js: 345ms, proxy.ts: 64ms, application-code: 278ms)
+ GET /login 200 in 908ms (next.js: 413ms, proxy.ts: 51ms, application-code: 444ms)
+ GET /login 200 in 829ms (next.js: 17ms, proxy.ts: 94ms, application-code: 718ms)
+ GET /login 200 in 770ms (next.js: 300ms, proxy.ts: 19ms, application-code: 451ms)
+ GET /login 200 in 882ms (next.js: 38ms, proxy.ts: 369ms, application-code: 475ms)
+ GET /login 200 in 646ms (next.js: 94ms, proxy.ts: 139ms, application-code: 413ms)
+ GET /login 200 in 635ms (next.js: 166ms, proxy.ts: 131ms, application-code: 338ms)
+ GET /login 200 in 539ms (next.js: 248ms, proxy.ts: 27ms, application-code: 264ms)
+ GET /login 200 in 738ms (next.js: 18ms, proxy.ts: 17ms, application-code: 703ms)
+ GET /login 200 in 684ms (next.js: 54ms, proxy.ts: 21ms, application-code: 609ms)
+ GET /login 200 in 738ms (next.js: 298ms, proxy.ts: 32ms, application-code: 408ms)
+ GET /login 200 in 744ms (next.js: 387ms, proxy.ts: 33ms, application-code: 323ms)
+ GET /login 200 in 752ms (next.js: 450ms, proxy.ts: 34ms, application-code: 268ms)
+ GET /login 200 in 769ms (next.js: 149ms, proxy.ts: 378ms, application-code: 243ms)
+ GET /login 200 in 478ms (next.js: 16ms, proxy.ts: 30ms, application-code: 432ms)
+ GET /login 200 in 444ms (next.js: 47ms, proxy.ts: 25ms, application-code: 372ms)
+ GET /login 200 in 502ms (next.js: 105ms, proxy.ts: 48ms, application-code: 348ms)
+ GET /login 200 in 499ms (next.js: 103ms, proxy.ts: 107ms, application-code: 288ms)
+ GET /login 200 in 505ms (next.js: 152ms, proxy.ts: 107ms, application-code: 245ms)
+ GET /login 200 in 423ms (next.js: 69ms, proxy.ts: 142ms, application-code: 212ms)
+ GET /login 200 in 560ms (next.js: 16ms, proxy.ts: 16ms, application-code: 528ms)
+ GET /login 200 in 889ms (next.js: 36ms, proxy.ts: 38ms, application-code: 815ms)
+ GET /login 200 in 1326ms (next.js: 106ms, proxy.ts: 34ms, application-code: 1186ms)
+ GET /login 200 in 1354ms (next.js: 107ms, proxy.ts: 105ms, application-code: 1142ms)
+ GET /login 200 in 1409ms (next.js: 166ms, proxy.ts: 103ms, application-code: 1140ms)
+ GET /login 200 in 1453ms (next.js: 249ms, proxy.ts: 99ms, application-code: 1105ms)
+ GET /login 200 in 4.7s (next.js: 67ms, proxy.ts: 64ms, application-code: 4.6s)
+ GET /login 200 in 4.3s (next.js: 293ms, proxy.ts: 93ms, application-code: 4.0s)
+ GET /login 200 in 4.3s (next.js: 1994ms, proxy.ts: 240ms, application-code: 2.1s)
+ GET /login 200 in 4.3s (next.js: 1948ms, proxy.ts: 1620ms, application-code: 723ms)
+ GET /login 200 in 4.1s (next.js: 2.0s, proxy.ts: 1808ms, application-code: 291ms)
+ GET /login 200 in 2.8s (next.js: 484ms, proxy.ts: 2.1s, application-code: 229ms)
+ GET /login 200 in 424ms (next.js: 22ms, proxy.ts: 22ms, application-code: 380ms)
+ GET /login 200 in 435ms (next.js: 30ms, proxy.ts: 22ms, application-code: 382ms)
+ GET /login 200 in 479ms (next.js: 88ms, proxy.ts: 31ms, application-code: 360ms)
+ GET /login 200 in 473ms (next.js: 83ms, proxy.ts: 89ms, application-code: 301ms)
+ GET /login 200 in 419ms (next.js: 73ms, proxy.ts: 94ms, application-code: 252ms)
+ GET /login 200 in 460ms (next.js: 125ms, proxy.ts: 80ms, application-code: 255ms)
+ GET /login 200 in 457ms (next.js: 12ms, proxy.ts: 110ms, application-code: 335ms)
+ GET /login 200 in 355ms (next.js: 22ms, proxy.ts: 20ms, application-code: 313ms)
+ GET /login 200 in 413ms (next.js: 75ms, proxy.ts: 25ms, application-code: 313ms)
+ GET /login 200 in 415ms (next.js: 89ms, proxy.ts: 71ms, application-code: 254ms)
+ GET /login 200 in 372ms (next.js: 85ms, proxy.ts: 75ms, application-code: 212ms)
+ GET /login 200 in 382ms (next.js: 63ms, proxy.ts: 77ms, application-code: 242ms)
+ GET /login 200 in 480ms (next.js: 12ms, proxy.ts: 60ms, application-code: 408ms)
+ GET /login 200 in 440ms (next.js: 28ms, proxy.ts: 36ms, application-code: 376ms)
+ GET /login 200 in 476ms (next.js: 106ms, proxy.ts: 24ms, application-code: 346ms)
+ GET /login 200 in 462ms (next.js: 86ms, proxy.ts: 93ms, application-code: 283ms)
+ GET /login 200 in 398ms (next.js: 88ms, proxy.ts: 81ms, application-code: 229ms)
+ GET /login 200 in 513ms (next.js: 87ms, proxy.ts: 80ms, application-code: 345ms)
+ GET /login 200 in 517ms (next.js: 16ms, proxy.ts: 64ms, application-code: 436ms)
+ GET /login 200 in 612ms (next.js: 32ms, proxy.ts: 19ms, application-code: 561ms)
+ GET /login 200 in 660ms (next.js: 129ms, proxy.ts: 92ms, application-code: 439ms)
+ GET /login 200 in 656ms (next.js: 88ms, proxy.ts: 198ms, application-code: 370ms)
+ GET /login 200 in 591ms (next.js: 93ms, proxy.ts: 196ms, application-code: 302ms)
+ GET /login 200 in 467ms (next.js: 88ms, proxy.ts: 93ms, application-code: 287ms)
+ GET /login 200 in 547ms (next.js: 14ms, proxy.ts: 158ms, application-code: 375ms)
+ GET /login 200 in 411ms (next.js: 29ms, proxy.ts: 21ms, application-code: 361ms)
+ GET /login 200 in 406ms (next.js: 72ms, proxy.ts: 28ms, application-code: 306ms)
+ GET /login 200 in 596ms (next.js: 168ms, proxy.ts: 70ms, application-code: 358ms)
+ GET /login 200 in 543ms (next.js: 169ms, proxy.ts: 69ms, application-code: 305ms)
+ GET /login 200 in 573ms (next.js: 18ms, proxy.ts: 12ms, application-code: 543ms)
+ GET /login 200 in 865ms (next.js: 156ms, proxy.ts: 213ms, application-code: 497ms)
+ GET /login 200 in 575ms (next.js: 67ms, proxy.ts: 206ms, application-code: 303ms)
+ GET /login 200 in 393ms (next.js: 31ms, proxy.ts: 156ms, application-code: 206ms)
+ GET /login 200 in 498ms (next.js: 68ms, proxy.ts: 144ms, application-code: 286ms)
+ GET /login 200 in 383ms (next.js: 112ms, proxy.ts: 23ms, application-code: 248ms)
+ GET /login 200 in 419ms (next.js: 23ms, proxy.ts: 19ms, application-code: 376ms)
+ GET /login 200 in 417ms (next.js: 78ms, proxy.ts: 21ms, application-code: 319ms)
+ GET /login 200 in 411ms (next.js: 47ms, proxy.ts: 134ms, application-code: 229ms)
+ GET /login 200 in 333ms (next.js: 25ms, proxy.ts: 90ms, application-code: 218ms)
+ GET /login 200 in 313ms (next.js: 62ms, proxy.ts: 76ms, application-code: 175ms)
+ GET /login 200 in 324ms (next.js: 102ms, proxy.ts: 30ms, application-code: 192ms)
+ GET /login 200 in 381ms (next.js: 21ms, proxy.ts: 18ms, application-code: 342ms)
+ GET /login 200 in 380ms (next.js: 64ms, proxy.ts: 20ms, application-code: 296ms)
+ GET /login 200 in 360ms (next.js: 24ms, proxy.ts: 105ms, application-code: 231ms)
+ GET /login 200 in 273ms (next.js: 18ms, proxy.ts: 77ms, application-code: 178ms)
+ GET /login 200 in 278ms (next.js: 64ms, proxy.ts: 76ms, application-code: 138ms)
+ GET /login 200 in 313ms (next.js: 61ms, proxy.ts: 58ms, application-code: 194ms)
+ GET /login 200 in 352ms (next.js: 68ms, proxy.ts: 25ms, application-code: 259ms)
+ GET /login 200 in 355ms (next.js: 30ms, proxy.ts: 23ms, application-code: 302ms)
+ GET /login 200 in 358ms (next.js: 112ms, proxy.ts: 29ms, application-code: 217ms)
+ GET /login 200 in 347ms (next.js: 17ms, proxy.ts: 164ms, application-code: 166ms)
+ GET /login 200 in 357ms (next.js: 54ms, proxy.ts: 164ms, application-code: 139ms)
+ GET /login 200 in 264ms (next.js: 55ms, proxy.ts: 53ms, application-code: 157ms)
+ GET /login 200 in 391ms (next.js: 31ms, proxy.ts: 23ms, application-code: 337ms)
+ GET /login 200 in 390ms (next.js: 76ms, proxy.ts: 32ms, application-code: 282ms)
+ GET /login 200 in 389ms (next.js: 123ms, proxy.ts: 30ms, application-code: 236ms)
+ GET /login 200 in 375ms (next.js: 20ms, proxy.ts: 167ms, application-code: 188ms)
+ GET /login 200 in 333ms (next.js: 65ms, proxy.ts: 122ms, application-code: 146ms)
+ GET /login 200 in 339ms (next.js: 66ms, proxy.ts: 64ms, application-code: 210ms)
+ GET /login 200 in 404ms (next.js: 30ms, proxy.ts: 25ms, application-code: 350ms)
+ GET /login 200 in 402ms (next.js: 79ms, proxy.ts: 25ms, application-code: 298ms)
+ GET /login 200 in 393ms (next.js: 122ms, proxy.ts: 25ms, application-code: 246ms)
+ GET /login 200 in 390ms (next.js: 24ms, proxy.ts: 173ms, application-code: 193ms)
+ GET /login 200 in 346ms (next.js: 69ms, proxy.ts: 125ms, application-code: 153ms)
+ GET /login 200 in 344ms (next.js: 58ms, proxy.ts: 62ms, application-code: 224ms)
+ GET /login 200 in 438ms (next.js: 30ms, proxy.ts: 30ms, application-code: 378ms)
+ GET /login 200 in 433ms (next.js: 71ms, proxy.ts: 33ms, application-code: 330ms)
+ GET /login 200 in 432ms (next.js: 123ms, proxy.ts: 29ms, application-code: 280ms)
+ GET /login 200 in 431ms (next.js: 71ms, proxy.ts: 115ms, application-code: 245ms)
+ GET /login 200 in 430ms (next.js: 91ms, proxy.ts: 155ms, application-code: 184ms)
+ GET /login 200 in 402ms (next.js: 12ms, proxy.ts: 148ms, application-code: 242ms)
+ GET /login 200 in 350ms (next.js: 41ms, proxy.ts: 24ms, application-code: 286ms)
+ GET /login 200 in 348ms (next.js: 87ms, proxy.ts: 25ms, application-code: 236ms)
+ GET /login 200 in 340ms (next.js: 135ms, proxy.ts: 30ms, application-code: 175ms)
+ GET /login 200 in 308ms (next.js: 13ms, proxy.ts: 173ms, application-code: 122ms)
+ GET /login 200 in 305ms (next.js: 64ms, proxy.ts: 171ms, application-code: 70ms)
+✓ Compiled in 2s
+⚠ Fast Refresh had to perform a full reload when ./src/features/auth/services/authService.ts changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /login 200 in 5.1s (next.js: 4.7s, proxy.ts: 271ms, application-code: 145ms)
+ GET /login 200 in 5.2s (next.js: 1262ms, proxy.ts: 275ms, application-code: 3.6s)
+ GET /api/auth/me 401 in 892ms (next.js: 861ms, application-code: 32ms)
+ GET /api/notifications?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 374ms (next.js: 357ms, application-code: 18ms)
+ POST /api/auth/sync 200 in 1895ms (next.js: 898ms, application-code: 997ms)
+ GET /api/clinics/search?query= 200 in 3.3s (next.js: 634ms, application-code: 2.7s)
+ GET /api/notifications?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 17ms (next.js: 7ms, application-code: 9ms)
+ GET /api/appointments?role=PATIENT&userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 401 in 539ms (next.js: 525ms, application-code: 14ms)
+ GET /api/reports?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 266ms (next.js: 252ms, application-code: 14ms)
+ POST /api/auth/sync 200 in 844ms (next.js: 8ms, application-code: 835ms)
+ GET /api/visits?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 250ms (next.js: 235ms, application-code: 15ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 664ms (next.js: 328ms, application-code: 336ms)
+✓ Compiled in 633ms
+✓ Compiled in 2.6s
+✓ Compiled in 512ms
+✓ Compiled in 700ms
+ GET /api/auth/me 401 in 1794ms (next.js: 1644ms, application-code: 150ms)
+ GET /api/notifications?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 1031ms (next.js: 1001ms, application-code: 30ms)
+ POST /api/auth/sync 200 in 7.0s (next.js: 715ms, application-code: 6.2s)
+ GET /api/clinics/search?query= 200 in 10.8s (next.js: 1016ms, application-code: 9.8s)
+ GET /api/notifications?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 95ms (next.js: 65ms, application-code: 30ms)
+ GET /api/appointments?role=PATIENT&userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617&clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 401 in 743ms (next.js: 714ms, application-code: 29ms)
+ GET /api/reports?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 202ms (next.js: 166ms, application-code: 35ms)
+ POST /api/auth/sync 200 in 1002ms (next.js: 45ms, application-code: 957ms)
+ GET /api/visits?userId=temp_pat_5409fbe1-4c06-4ade-82a6-06f1b3c0e617 401 in 206ms (next.js: 183ms, application-code: 23ms)
+ GET /api/queue?clinicId=e6e824d2-f5de-4d78-96a9-bda2afe87256 200 in 511ms (next.js: 186ms, application-code: 325ms)
+○ Compiling /register/patient ...
+ GET /register/patient 200 in 2.8s (next.js: 97ms, application-code: 2.7s)
+ GET /register 200 in 1544ms (next.js: 1347ms, proxy.ts: 110ms, application-code: 88ms)
+ GET /login 200 in 2.3s (next.js: 974ms, proxy.ts: 26ms, application-code: 1272ms)
+ GET / 200 in 2.2s (next.js: 670ms, application-code: 1579ms)
+ GET / 200 in 1482ms (next.js: 11ms, application-code: 1471ms)
+ GET /api/clinics/search?query=&location=&pincode=&openNow=false&hasQueue=false&clinicType=All&sortBy=shortest_wait 200 in 3.4s (next.js: 22ms, application-code: 3.4s)
+ GET /api/clinics/search?query=&location=&pincode=&openNow=false&hasQueue=false&clinicType=All&sortBy=shortest_wait 200 in 234ms (next.js: 14ms, application-code: 220ms)
+ GET /login 200 in 414ms (next.js: 114ms, proxy.ts: 57ms, application-code: 243ms)

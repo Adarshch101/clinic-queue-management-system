@@ -1,10 +1,30 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess, type SessionPayload } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
   const auth = requireRole(request, ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
+  const { session } = auth;
+
+  const forbiddenClinic = () =>
+    NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
+
+  // A staff member may only operate on tokens that belong to their own clinic.
+  async function assertTokenAccess(session: SessionPayload, tokenId: string): Promise<NextResponse | null> {
+    const token = await prisma.queueToken.findUnique({ where: { id: tokenId } });
+    if (!token) return NextResponse.json({ error: 'Token not found' }, { status: 404 });
+    if (!sessionHasClinicAccess(session, token.clinicId)) return forbiddenClinic();
+    return null;
+  }
+
+  // A staff member may only operate on doctors that belong to their own clinic.
+  async function assertDoctorAccess(session: SessionPayload, doctorId: string): Promise<NextResponse | null> {
+    const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
+    if (!doctor) return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
+    if (!sessionHasClinicAccess(session, doctor.clinicId)) return forbiddenClinic();
+    return null;
+  }
 
   try {
     const body = await request.json();
@@ -27,6 +47,9 @@ export async function POST(request: Request) {
     // --- Action 1: Call Next Patient ---
     if (action === 'call-next') {
       if (!doctorId) return NextResponse.json({ error: 'Doctor ID is required' }, { status: 400 });
+
+      const doctorDenied = await assertDoctorAccess(session, doctorId);
+      if (doctorDenied) return doctorDenied;
 
       // 1. Mark any active called/consultation token for this doctor as COMPLETED
       await prisma.queueToken.updateMany({
@@ -102,6 +125,9 @@ export async function POST(request: Request) {
     if (action === 'complete') {
       if (!tokenId) return NextResponse.json({ error: 'Token ID is required' }, { status: 400 });
 
+      const tokenDenied = await assertTokenAccess(session, tokenId);
+      if (tokenDenied) return tokenDenied;
+
       const token = await prisma.queueToken.findUnique({
         where: { id: tokenId },
         include: { doctor: true },
@@ -152,6 +178,9 @@ export async function POST(request: Request) {
     if (action === 'skip') {
       if (!tokenId) return NextResponse.json({ error: 'Token ID is required' }, { status: 400 });
 
+      const tokenDenied = await assertTokenAccess(session, tokenId);
+      if (tokenDenied) return tokenDenied;
+
       const updated = await prisma.queueToken.update({
         where: { id: tokenId },
         data: { status: 'SKIPPED' },
@@ -163,6 +192,9 @@ export async function POST(request: Request) {
     // --- Action 4: Recall Patient ---
     if (action === 'recall') {
       if (!tokenId) return NextResponse.json({ error: 'Token ID is required' }, { status: 400 });
+
+      const tokenDenied = await assertTokenAccess(session, tokenId);
+      if (tokenDenied) return tokenDenied;
 
       const updated = await prisma.queueToken.update({
         where: { id: tokenId },
@@ -180,6 +212,9 @@ export async function POST(request: Request) {
       if (!tokenId || !direction) {
         return NextResponse.json({ error: 'Missing tokenId or direction' }, { status: 400 });
       }
+
+      const tokenDenied = await assertTokenAccess(session, tokenId);
+      if (tokenDenied) return tokenDenied;
 
       const token = await prisma.queueToken.findUnique({ where: { id: tokenId } });
       if (!token) return NextResponse.json({ error: 'Token not found' }, { status: 404 });
@@ -199,6 +234,9 @@ export async function POST(request: Request) {
     if (action === 'toggle-emergency') {
       if (!tokenId) return NextResponse.json({ error: 'Token ID is required' }, { status: 400 });
 
+      const tokenDenied = await assertTokenAccess(session, tokenId);
+      if (tokenDenied) return tokenDenied;
+
       const updated = await prisma.queueToken.update({
         where: { id: tokenId },
         data: {
@@ -214,6 +252,9 @@ export async function POST(request: Request) {
     // --- Action 7: Approve Emergency ---
     if (action === 'approve-emergency') {
       if (!tokenId) return NextResponse.json({ error: 'Token ID is required' }, { status: 400 });
+
+      const tokenDenied = await assertTokenAccess(session, tokenId);
+      if (tokenDenied) return tokenDenied;
 
       // Elevate priority index to 1000 so they are placed next in line
       const updated = await prisma.queueToken.update({
@@ -232,6 +273,9 @@ export async function POST(request: Request) {
     if (action === 'pause-queue' || action === 'resume-queue') {
       if (!doctorId) return NextResponse.json({ error: 'Doctor ID is required' }, { status: 400 });
 
+      const doctorDenied = await assertDoctorAccess(session, doctorId);
+      if (doctorDenied) return doctorDenied;
+
       const isActive = action === 'resume-queue' ? 'true' : 'false';
       const updated = await prisma.doctor.update({
         where: { id: doctorId },
@@ -246,6 +290,9 @@ export async function POST(request: Request) {
       if (!doctorId || !mins) {
         return NextResponse.json({ error: 'Missing doctorId or mins delay value' }, { status: 400 });
       }
+
+      const doctorDenied = await assertDoctorAccess(session, doctorId);
+      if (doctorDenied) return doctorDenied;
 
       // Find all WAITING tokens for this doctor
       const waitingTokens = await prisma.queueToken.findMany({
@@ -265,6 +312,9 @@ export async function POST(request: Request) {
     // --- Action 10: Call Previous Patient ---
     if (action === 'call-previous') {
       if (!doctorId) return NextResponse.json({ error: 'Doctor ID is required' }, { status: 400 });
+
+      const doctorDenied = await assertDoctorAccess(session, doctorId);
+      if (doctorDenied) return doctorDenied;
 
       // 1. Find the current active token (CALLED or IN_CONSULTATION)
       const currentActive = await prisma.queueToken.findFirst({
@@ -322,10 +372,16 @@ export async function POST(request: Request) {
 
     // --- Action 11: Transfer Patient to another Doctor ---
     if (action === 'transfer') {
-      const { targetDoctorId, performedBy } = body;
+      const { targetDoctorId } = body;
       if (!tokenId || !targetDoctorId) {
         return NextResponse.json({ error: 'Missing tokenId or targetDoctorId' }, { status: 400 });
       }
+
+      const tokenDenied = await assertTokenAccess(session, tokenId);
+      if (tokenDenied) return tokenDenied;
+
+      const targetDenied = await assertDoctorAccess(session, targetDoctorId);
+      if (targetDenied) return targetDenied;
 
       const token = await prisma.queueToken.findUnique({
         where: { id: tokenId },
@@ -362,7 +418,7 @@ export async function POST(request: Request) {
           tokenId,
           fromDoctorId: token.doctorId,
           toDoctorId: targetDoctorId,
-          performedBy: performedBy || 'unknown',
+          performedBy: session.userId,
         },
       });
 
@@ -380,8 +436,8 @@ export async function POST(request: Request) {
       await prisma.auditLog.create({
         data: {
           clinicId: token.clinicId,
-          userId: performedBy || 'unknown',
-          userRole: 'RECEPTIONIST',
+          userId: session.userId,
+          userRole: session.role as 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN',
           action: 'TRANSFER_PATIENT',
           details: `Patient token ${token.tokenNumber} transferred from Dr ${token.doctor.name} to Dr ${targetDoctor.name}`,
         },
@@ -392,8 +448,10 @@ export async function POST(request: Request) {
 
     // --- Action 12: Cancel Patient Token ---
     if (action === 'cancel') {
-      const { performedBy } = body;
       if (!tokenId) return NextResponse.json({ error: 'Token ID is required' }, { status: 400 });
+
+      const tokenDenied = await assertTokenAccess(session, tokenId);
+      if (tokenDenied) return tokenDenied;
 
       const token = await prisma.queueToken.findUnique({ where: { id: tokenId } });
       if (!token) return NextResponse.json({ error: 'Token not found' }, { status: 404 });
@@ -419,8 +477,8 @@ export async function POST(request: Request) {
       await prisma.auditLog.create({
         data: {
           clinicId: token.clinicId,
-          userId: performedBy || 'staff-id',
-          userRole: 'RECEPTIONIST',
+          userId: session.userId,
+          userRole: session.role as 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN',
           action: 'CANCEL_QUEUE_TOKEN',
           details: `Token: ${token.tokenNumber} was cancelled by staff`,
         },

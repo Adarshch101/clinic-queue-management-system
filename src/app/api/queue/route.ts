@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
   try {
@@ -67,6 +67,17 @@ export async function POST(request: Request) {
 
     const activeClinicId = clinicId;
 
+    // Clinic access enforcement: staff may only manage their own clinic,
+    // and patients may only check in at their own clinic.
+    if (session.role === 'PATIENT') {
+      const patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
+      if (!patient || patient.clinicId !== activeClinicId) {
+        return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
+      }
+    } else if (!sessionHasClinicAccess(session, activeClinicId)) {
+      return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
+    }
+
     // Scenario 1: Check-in a booked appointment
     if (appointmentId) {
       const appt = await prisma.appointment.findUnique({
@@ -76,6 +87,10 @@ export async function POST(request: Request) {
 
       if (!appt) {
         return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+      }
+
+      if (appt.clinicId !== activeClinicId) {
+        return NextResponse.json({ error: 'Appointment does not belong to this clinic' }, { status: 403 });
       }
 
       // Patients may only check in their own appointments
@@ -172,6 +187,9 @@ export async function POST(request: Request) {
     const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
     if (!doctor) {
       return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
+    }
+    if (doctor.clinicId !== activeClinicId) {
+      return NextResponse.json({ error: 'Doctor does not belong to this clinic' }, { status: 403 });
     }
 
     // Calculate wait times

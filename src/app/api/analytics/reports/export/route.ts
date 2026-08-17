@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AnalyticsService } from '@/lib/analyticsService';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
   const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
@@ -13,6 +13,11 @@ export async function POST(request: Request) {
 
     if (!type) {
       return NextResponse.json({ error: 'Missing type parameter' }, { status: 400 });
+    }
+
+    // Clinic admins may only export analytics for their own clinic.
+    if (!sessionHasClinicAccess(session, clinicId)) {
+      return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
     const generatedBy = session.userId;

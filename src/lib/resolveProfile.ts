@@ -4,6 +4,14 @@ export type ResolvedRole = 'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN' | 'SU
 
 export type ClinicStatus = 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED' | 'INACTIVE';
 
+// The role column on profile tables is the source of truth; fall back to the
+// role implied by the table if a legacy row somehow has no value.
+function roleFromColumn(value: unknown, fallback: ResolvedRole): ResolvedRole {
+  return ['PATIENT', 'RECEPTIONIST', 'DOCTOR', 'ADMIN'].includes(String(value))
+    ? (value as ResolvedRole)
+    : fallback;
+}
+
 export interface ResolvedProfile {
   userId: string;
   name: string;
@@ -43,7 +51,7 @@ export async function resolveProfile(userId: string, email?: string): Promise<Re
   });
   if (admin) {
     profile = admin;
-    role = 'ADMIN';
+    role = roleFromColumn(admin.role, 'ADMIN');
     clinicId = admin.clinicId;
     clinicStatus = admin.clinic.status as ClinicStatus;
   }
@@ -55,7 +63,7 @@ export async function resolveProfile(userId: string, email?: string): Promise<Re
     });
     if (doc) {
       profile = doc;
-      role = 'DOCTOR';
+      role = roleFromColumn(doc.role, 'DOCTOR');
       clinicId = doc.clinicId;
       clinicStatus = doc.clinic.status as ClinicStatus;
     }
@@ -68,9 +76,47 @@ export async function resolveProfile(userId: string, email?: string): Promise<Re
     });
     if (recep) {
       profile = recep;
-      role = 'RECEPTIONIST';
+      role = roleFromColumn(recep.role, 'RECEPTIONIST');
       clinicId = recep.clinicId;
       clinicStatus = recep.clinic.status as ClinicStatus;
+    }
+  }
+
+  // Profiles created by an admin invitation carry the invitee's email but not
+  // yet their Supabase auth userId. Match by email as a fallback so invited
+  // staff can sign in with the account they were invited under.
+  if (!profile && normalizedEmail) {
+    const adminByEmail = await prisma.clinicAdmin.findFirst({
+      where: { email: normalizedEmail },
+      include: { clinic: true },
+    });
+    if (adminByEmail) {
+      profile = adminByEmail;
+      role = roleFromColumn(adminByEmail.role, 'ADMIN');
+      clinicId = adminByEmail.clinicId;
+      clinicStatus = adminByEmail.clinic.status as ClinicStatus;
+    } else {
+      const docByEmail = await prisma.doctor.findFirst({
+        where: { email: normalizedEmail },
+        include: { clinic: true },
+      });
+      if (docByEmail) {
+        profile = docByEmail;
+        role = roleFromColumn(docByEmail.role, 'DOCTOR');
+        clinicId = docByEmail.clinicId;
+        clinicStatus = docByEmail.clinic.status as ClinicStatus;
+      } else {
+        const recepByEmail = await prisma.receptionist.findFirst({
+          where: { email: normalizedEmail },
+          include: { clinic: true },
+        });
+        if (recepByEmail) {
+          profile = recepByEmail;
+          role = roleFromColumn(recepByEmail.role, 'RECEPTIONIST');
+          clinicId = recepByEmail.clinicId;
+          clinicStatus = recepByEmail.clinic.status as ClinicStatus;
+        }
+      }
     }
   }
 
@@ -80,8 +126,8 @@ export async function resolveProfile(userId: string, email?: string): Promise<Re
     });
     if (pat) {
       profile = pat;
-      role = 'PATIENT';
-      clinicId = pat.clinicId;
+      role = roleFromColumn(pat.role, 'PATIENT');
+      clinicId = pat.clinicId ?? undefined;
     }
   }
 

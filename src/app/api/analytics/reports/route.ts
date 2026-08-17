@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
   const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
+  const { session } = auth;
 
   try {
     const { searchParams } = new URL(request.url);
     const clinicId = searchParams.get('clinicId');
+
+    // Clinic admins may only access reports for their own clinic.
+    if (!sessionHasClinicAccess(session, clinicId)) {
+      return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
+    }
 
     const reports = await prisma.report.findMany({
       where: clinicId ? { clinicId } : undefined,
@@ -31,6 +37,11 @@ export async function POST(request: Request) {
 
     if (!name || !type) {
       return NextResponse.json({ error: 'Missing report properties' }, { status: 400 });
+    }
+
+    // Clinic admins may only generate reports for their own clinic.
+    if (!sessionHasClinicAccess(session, clinicId)) {
+      return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
     const generatedBy = session.userId;

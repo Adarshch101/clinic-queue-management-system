@@ -2,8 +2,24 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Menu, X, Sun, Moon, LogIn } from 'lucide-react';
-import Link from 'next/link';
+import NextLink from 'next/link';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import Container from '@mui/material/Container';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import Divider from '@mui/material/Divider';
+import Drawer from '@mui/material/Drawer';
+import Link from '@mui/material/Link';
+import Stack from '@mui/material/Stack';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LoginIcon from '@mui/icons-material/Login';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 
 export interface PublicLayoutProps {
   children: React.ReactNode;
@@ -22,144 +38,234 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-bg-base text-text-primary">
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* Premium Public Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border-subtle/55 bg-bg-surface/75 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <AppBar
+        position="sticky"
+        elevation={0}
+        sx={{
+          backgroundColor: (t) => (t.palette.mode === 'light' ? 'rgba(255,255,255,0.72)' : 'rgba(11,15,25,0.72)'),
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          color: 'text.primary',
+        }}
+      >
+        <Toolbar sx={{ minHeight: 64, gap: 2 }}>
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl px-2.5 py-1 rounded-xl bg-primary text-white font-black leading-none shadow-md shadow-primary/20">
+          <NextLink href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: 3,
+                bgcolor: 'primary.main',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 900,
+                fontSize: 20,
+                boxShadow: (t) => `0 8px 16px -4px ${t.palette.primary.main}55`,
+              }}
+            >
               Q
-            </span>
-            <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">
+            </Box>
+            <Typography
+              component="span"
+              sx={{
+                fontWeight: 800,
+                fontSize: 18,
+                letterSpacing: '-0.02em',
+                background: (t) => `linear-gradient(90deg, ${t.palette.primary.main}, ${t.palette.secondary?.main || t.palette.info.main})`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
               Q-Clinix
-            </span>
-          </Link>
+            </Typography>
+          </NextLink>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-text-secondary">
+          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, gap: 1, justifyContent: 'center' }}>
             {navLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="hover:text-primary transition">
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Right Header Buttons */}
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl text-text-secondary hover:bg-bg-muted hover:text-text-primary transition shrink-0"
-            >
-              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-yellow-400" />}
-            </button>
-
-            {/* Login Links */}
-            <Link
-              href="/login"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-primary bg-primary-glow border border-primary/25 hover:bg-primary-hover hover:text-white transition"
-            >
-              <LogIn className="w-3.5 h-3.5" /> Portal Login
-            </Link>
-
-            {/* Register Workspace */}
-            <Link
-              href="/register"
-              className="hidden sm:inline-flex px-4 py-2 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-hover hover:shadow-lg hover:shadow-primary/20 active:scale-95 transition"
-            >
-              Register Clinic
-            </Link>
-
-            {/* Mobile menu toggle */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl text-text-secondary hover:bg-bg-muted md:hidden shrink-0"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-b border-border-subtle bg-bg-surface px-4 pt-2 pb-4 flex flex-col gap-2">
-            {navLinks.map((link) => (
-              <Link
+              <Button
                 key={link.href}
+                component={NextLink}
                 href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 rounded-xl text-sm font-bold text-text-secondary hover:bg-bg-muted hover:text-primary transition"
+                size="small"
+                color="inherit"
+                sx={{ fontWeight: 700, color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'action.hover' } }}
               >
                 {link.label}
-              </Link>
+              </Button>
             ))}
-            <div className="border-t border-border-subtle/50 my-2 pt-2 flex flex-col gap-2">
-              <Link
+          </Box>
+
+{/* Right Header Controls */}
+            <Box sx={{ flexGrow: { xs: 1, md: 0 }, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <IconButton onClick={toggleTheme} size="small" sx={{ color: 'text.secondary' }} aria-label="Toggle theme">
+                {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon sx={{ color: 'warning.main' }} />}
+              </IconButton>
+
+              <Button
+                component={NextLink}
                 href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center py-2 rounded-xl text-sm font-bold text-primary bg-primary-glow border border-primary/20"
+                variant="outlined"
+                size="small"
+                startIcon={<LoginIcon />}
+                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
               >
                 Portal Login
-              </Link>
-              <Link
+              </Button>
+
+              <Button
+                component={NextLink}
+                href="/register/patient"
+                variant="outlined"
+                size="small"
+                startIcon={<PersonAddIcon />}
+                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+              >
+                Patient Sign Up
+              </Button>
+
+              <Button
+                component={NextLink}
                 href="/register"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center py-2 rounded-xl text-sm font-bold text-white bg-primary hover:bg-primary-hover"
+                variant="contained"
+                size="small"
+                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
               >
                 Register Clinic
-              </Link>
-            </div>
-          </div>
-        )}
-      </header>
+              </Button>
+
+              <IconButton
+                onClick={() => setMobileMenuOpen(true)}
+                size="small"
+                sx={{ color: 'text.secondary', display: { md: 'none' } }}
+                aria-label="Open menu"
+              >
+                <MenuIcon />
+              </IconButton>
+            </Box>
+        </Toolbar>
+      </AppBar>
+
+      {/* Mobile Navigation Drawer */}
+      <Drawer anchor="right" open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)}>
+        <Box sx={{ width: 280, p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography sx={{ fontWeight: 800 }}>Q-Clinix</Typography>
+            <IconButton onClick={() => setMobileMenuOpen(false)} size="small" aria-label="Close menu">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <Divider />
+          {navLinks.map((link) => (
+            <Button
+              key={link.href}
+              component={NextLink}
+              href={link.href}
+              onClick={() => setMobileMenuOpen(false)}
+              fullWidth
+              sx={{ justifyContent: 'flex-start', py: 1.25 }}
+            >
+              {link.label}
+            </Button>
+          ))}
+          <Divider sx={{ my: 1 }} />
+          <Button component={NextLink} href="/login" variant="outlined" fullWidth>
+            Portal Login
+          </Button>
+          <Button component={NextLink} href="/register/patient" variant="outlined" fullWidth startIcon={<PersonAddIcon />}>
+            Patient Sign Up
+          </Button>
+          <Button component={NextLink} href="/register" variant="contained" fullWidth>
+            Register Clinic
+          </Button>
+        </Box>
+      </Drawer>
 
       {/* Page Content */}
-      <main className="flex-1 w-full">{children}</main>
+      <Box component="main" sx={{ flexGrow: 1, width: '100%' }}>
+        {children}
+      </Box>
 
       {/* Premium Public Footer */}
-      <footer className="border-t border-border-subtle/55 bg-bg-surface py-10 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-text-secondary">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl px-2 py-0.5 rounded-lg bg-primary text-white font-black leading-none">
-                Q
-              </span>
-              <span className="font-extrabold text-base text-text-primary">Q-Clinix SaaS</span>
-            </div>
-            <p className="max-w-xs text-text-muted mt-1 leading-relaxed">
-              Eliminate waiting room friction, streamline doctor scheduling, and optimize healthcare delivery with AI queue models.
-            </p>
-          </div>
+      <Box component="footer" sx={{ borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', pt: 5, pb: 6 }}>
+        <Container maxWidth="lg">
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} sx={{ justifyContent: 'space-between' }}>
+            <Box sx={{ maxWidth: 320 }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 2,
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 900,
+                  }}
+                >
+                  Q
+                </Box>
+                <Typography sx={{ fontWeight: 800 }}>Q-Clinix SaaS</Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.6 }}>
+                Eliminate waiting room friction, streamline doctor scheduling, and optimize healthcare delivery with AI queue models.
+              </Typography>
+            </Box>
 
-          <div className="flex flex-wrap gap-8">
-            <div className="flex flex-col gap-2">
-              <span className="font-extrabold text-[10px] uppercase tracking-wider text-text-primary">Solutions</span>
-              <Link href="/clinics" className="hover:text-primary">Clinic Directory</Link>
-              <Link href="/queue-status" className="hover:text-primary">Lobby Tracker</Link>
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="font-extrabold text-[10px] uppercase tracking-wider text-text-primary">Company</span>
-              <Link href="/about" className="hover:text-primary">About Us</Link>
-              <Link href="/contact" className="hover:text-primary">Contact Support</Link>
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="font-extrabold text-[10px] uppercase tracking-wider text-text-primary">Legal</span>
-              <a href="#" className="hover:text-primary">Privacy Policy</a>
-              <a href="#" className="hover:text-primary">Terms of Service</a>
-              <a href="#" className="hover:text-primary">HIPAA Audit</a>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-border-subtle/40 mt-8 pt-6 flex justify-between items-center text-[10px] text-text-muted">
-          <span>© 2026 Q-Clinix Inc. All rights reserved.</span>
-          <div className="flex gap-3">
-            <a href="#" className="hover:text-primary">Twitter</a>
-            <a href="#" className="hover:text-primary">LinkedIn</a>
-          </div>
-        </div>
-      </footer>
-    </div>
+            <Stack direction="row" spacing={6} useFlexGap sx={{ flexWrap: 'wrap' }}>
+              <Box>
+                <Typography sx={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>
+                  Solutions
+                </Typography>
+                <Stack spacing={0.75}>
+                  <Link component={NextLink} href="/clinics" color="text.secondary" underline="hover">Clinic Directory</Link>
+                  <Link component={NextLink} href="/queue-status" color="text.secondary" underline="hover">Lobby Tracker</Link>
+                </Stack>
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>
+                  Company
+                </Typography>
+                <Stack spacing={0.75}>
+                  <Link component={NextLink} href="/about" color="text.secondary" underline="hover">About Us</Link>
+                  <Link component={NextLink} href="/contact" color="text.secondary" underline="hover">Contact Support</Link>
+                </Stack>
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>
+                  Legal
+                </Typography>
+                <Stack spacing={0.75}>
+                  <Link href="#" color="text.secondary" underline="hover">Privacy Policy</Link>
+                  <Link href="#" color="text.secondary" underline="hover">Terms of Service</Link>
+                  <Link href="#" color="text.secondary" underline="hover">HIPAA Audit</Link>
+                </Stack>
+              </Box>
+            </Stack>
+          </Stack>
+
+          <Divider sx={{ mt: 4, mb: 2 }} />
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="caption" color="text.disabled">
+              © 2026 Q-Clinix Inc. All rights reserved.
+            </Typography>
+            <Stack direction="row" spacing={2}>
+              <Link href="#" color="text.secondary" underline="hover" variant="caption">Twitter</Link>
+              <Link href="#" color="text.secondary" underline="hover" variant="caption">LinkedIn</Link>
+            </Stack>
+          </Stack>
+        </Container>
+      </Box>
+    </Box>
   );
 };
 export default PublicLayout;

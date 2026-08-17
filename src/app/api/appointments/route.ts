@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth, requireRole } from '@/lib/apiAuth';
+import { requireAuth, requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 type AppointmentRecord = {
   id: string;
@@ -25,6 +25,11 @@ export async function GET(request: Request) {
 
     if (!clinicId) {
       return NextResponse.json({ error: 'clinicId is required' }, { status: 400 });
+    }
+
+    // Staff members may only view appointments for their own clinic.
+    if (session.role !== 'PATIENT' && !sessionHasClinicAccess(session, clinicId)) {
+      return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
     let appointments: AppointmentRecord[];
@@ -83,21 +88,42 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { doctorId, dateTime, reason, clinicId } = body;
+    const { doctorId, dateTime, reason, clinicId, patientId } = body;
 
     if (!doctorId || !dateTime || !reason) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    // Resolve the patient from the session (never trust a client-supplied patientId)
-    const patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
-    if (!patient) {
-      return NextResponse.json({ error: 'Patient profile not found' }, { status: 404 });
+    const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
+    if (!doctor) {
+      return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
+    }
+
+    let patient: { id: string; clinicId: string | null } | null = null;
+
+    if (session.role === 'PATIENT') {
+      // Resolve the patient from the session (never trust a client-supplied patientId)
+      patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
+      if (!patient) {
+        return NextResponse.json({ error: 'Patient profile not found' }, { status: 404 });
+      }
+    } else {
+      // Staff booking for a walk-in/known patient within their own clinic.
+      if (!sessionHasClinicAccess(session, clinicId || doctor.clinicId)) {
+        return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
+      }
+      if (!patientId) {
+        return NextResponse.json({ error: 'patientId is required for staff bookings' }, { status: 400 });
+      }
+      patient = await prisma.patient.findUnique({ where: { id: patientId } });
+      if (!patient || patient.clinicId === null || !sessionHasClinicAccess(session, patient.clinicId) || patient.clinicId !== doctor.clinicId) {
+        return NextResponse.json({ error: 'Patient or doctor does not belong to your clinic' }, { status: 403 });
+      }
     }
 
     const appt = await prisma.appointment.create({
       data: {
-        clinicId: clinicId || patient.clinicId,
+        clinicId: doctor.clinicId,
         patientId: patient.id,
         doctorId,
         dateTime: new Date(dateTime),
@@ -143,6 +169,11 @@ export async function PATCH(request: Request) {
     const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
     if (!appointment) {
       return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+    }
+
+    // Staff may only modify appointments in their own clinic.
+    if (session.role !== 'PATIENT' && !sessionHasClinicAccess(session, appointment.clinicId)) {
+      return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
     // Patients may only cancel their own appointments

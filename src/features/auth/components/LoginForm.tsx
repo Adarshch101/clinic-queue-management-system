@@ -4,10 +4,19 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { validateEmail } from '../validators/authValidators';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import Box from '@mui/material/Box';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Alert from '@mui/material/Alert';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Stack from '@mui/material/Stack';
+import CircularProgress from '@mui/material/CircularProgress';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 export const LoginForm: React.FC = () => {
   const router = useRouter();
@@ -18,7 +27,6 @@ export const LoginForm: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Error/Loading states
   const [emailError, setEmailError] = useState<string | null>(null);
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,7 +36,6 @@ export const LoginForm: React.FC = () => {
     setEmailError(null);
     setGeneralError(null);
 
-    // Validation
     const mailErr = validateEmail(email);
     if (mailErr) {
       setEmailError(mailErr);
@@ -67,67 +74,70 @@ export const LoginForm: React.FC = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {generalError && (
-        <div className="p-3.5 rounded-xl bg-danger-muted border border-danger/25 text-danger text-xs font-bold flex items-center gap-2 animate-pulse">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{generalError}</span>
-        </div>
-      )}
+    <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {generalError && <Alert severity="error" sx={{ fontSize: 13, fontWeight: 700 }}>{generalError}</Alert>}
 
-      <Input
+      <TextField
         label="Email Address"
         type="email"
         required
+        fullWidth
         placeholder="you@clinicdomain.com"
         value={email}
         onChange={(e) => {
           setEmail(e.target.value);
           if (emailError) setEmailError(null);
         }}
-        error={emailError || undefined}
+        error={!!emailError}
+        helperText={emailError || undefined}
       />
 
-      <div className="relative w-full">
-        <Input
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          required
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3.5 top-[38px] text-text-muted hover:text-text-primary transition focus:outline-none"
-        >
-          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
-      </div>
+      <TextField
+        label="Password"
+        type={showPassword ? 'text' : 'password'}
+        required
+        fullWidth
+        placeholder="••••••••"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        slotProps={{
+          input: {
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton onClick={() => setShowPassword((v) => !v)} edge="end" aria-label="Toggle password visibility">
+                  {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
 
-      <div className="flex justify-between items-center text-[10px] text-text-secondary font-bold pt-1">
-        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-            className="rounded border-border-subtle text-primary focus:ring-primary-glow"
-          />
-          <span>Remember me</span>
-        </label>
-        <button
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+        <FormControlLabel
+          control={<Checkbox checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} size="small" />}
+          label={<Box component="span" sx={{ fontSize: 12, fontWeight: 700 }}>Remember me</Box>}
+        />
+        <Button
           type="button"
+          size="small"
           onClick={() => router.push('/auth/forgot-password')}
-          className="hover:underline text-primary bg-transparent border-0 font-bold"
+          sx={{ textTransform: 'none', fontWeight: 700 }}
         >
           Forgot Password?
-        </button>
-      </div>
+        </Button>
+      </Stack>
 
-      <Button type="submit" variant="primary" className="w-full mt-2" isLoading={loading}>
-        Authenticate Credentials
+      <Button
+        type="submit"
+        variant="contained"
+        size="large"
+        fullWidth
+        disabled={loading}
+        sx={{ mt: 1, py: 1.5, fontWeight: 800 }}
+      >
+        {loading ? <CircularProgress size={22} color="inherit" /> : 'Authenticate Credentials'}
       </Button>
-    </form>
+    </Box>
   );
 };

@@ -81,6 +81,7 @@ model ClinicAdmin {
   id              String           @id @default(uuid())
   clinicId        String
   userId          String           @unique // Linked to Supabase Auth ID
+  role            Role             @default(ADMIN)
   name            String
   email           String
   phone           String?
@@ -96,6 +97,7 @@ model Doctor {
   id              String           @id @default(uuid())
   clinicId        String
   userId          String           @unique // Linked to Supabase Auth ID
+  role            Role             @default(DOCTOR)
   name            String
   email           String
   phone           String?
@@ -126,6 +128,7 @@ model Receptionist {
   id              String           @id @default(uuid())
   clinicId        String
   userId          String           @unique // Linked to Supabase Auth ID
+  role            Role             @default(RECEPTIONIST)
   name            String
   email           String
   createdAt       DateTime         @default(now())
@@ -137,8 +140,9 @@ model Receptionist {
 
 model Patient {
   id              String           @id @default(uuid())
-  clinicId        String
+  clinicId        String?
   userId          String?          @unique // Nullable if registered as walk-in without account
+  role            Role             @default(PATIENT)
   name            String
   email           String?
   phone           String
@@ -148,7 +152,7 @@ model Patient {
   updatedAt       DateTime         @updatedAt
 
   // Relations
-  clinic          Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic          Clinic?          @relation(fields: [clinicId], references: [id], onDelete: SetNull)
   appointments    Appointment[]
   queueTokens     QueueToken[]
   visits          Visit[]

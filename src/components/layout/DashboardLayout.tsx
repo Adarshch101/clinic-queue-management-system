@@ -8,8 +8,8 @@ import {
   Menu, X, Sun, Moon, Bell, 
   Home, Activity, FileText, History, Calendar, 
   UserCheck, Users, Settings, BarChart3, 
-  Sparkles, CreditCard, ChevronDown, LogOut,
-  Building, Shield, Trash2, LayoutDashboard
+  Sparkles, CreditCard, ChevronDown, ChevronRight, LogOut,
+  Building, Shield, Trash2, LayoutDashboard, Megaphone, Sliders
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
@@ -20,9 +20,6 @@ export interface DashboardLayoutProps {
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const {
-    clinics,
-    currentClinic,
-    setClinicById,
     currentRole,
     currentUser,
     notifications,
@@ -38,7 +35,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [clinicMenuOpen, setClinicMenuOpen] = useState(false);
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
   const [prefModalOpen, setPrefModalOpen] = useState(false);
 
@@ -137,57 +133,102 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
 
 
-  // Resolve sidebar links based on role
+  // Resolve sidebar links based on role, grouped into collapsible sections
   const getSidebarLinks = () => {
     switch (currentRole) {
       case 'PATIENT':
         return [
-          { href: '/patient/dashboard', label: 'Patient Dashboard', icon: <Home className="w-4 h-4" /> },
-          { href: '/queue-status', label: 'Live Queue status', icon: <Activity className="w-4 h-4" /> },
-          { href: '/patient/dashboard#reports', label: 'Medical Reports', icon: <FileText className="w-4 h-4" /> },
-          { href: '/patient/dashboard#visits', label: 'Visit History', icon: <History className="w-4 h-4" /> },
+          { section: 'My Care', items: [
+            { href: '/patient/dashboard', label: 'Patient Dashboard', icon: <Home className="w-4 h-4" /> },
+            { href: '/queue-status', label: 'Live Queue Status', icon: <Activity className="w-4 h-4" /> },
+            { href: '/patient/dashboard#reports', label: 'Medical Reports', icon: <FileText className="w-4 h-4" /> },
+            { href: '/patient/dashboard#visits', label: 'Visit History', icon: <History className="w-4 h-4" /> },
+          ]},
         ];
       case 'RECEPTIONIST':
         return [
-          { href: '/receptionist/dashboard', label: 'Reception Dashboard', icon: <Home className="w-4 h-4" /> },
-          { href: '/receptionist/dashboard#register', label: 'Register Walk-In', icon: <Users className="w-4 h-4" /> },
-          { href: '/receptionist/dashboard#bookings', label: 'Booked Appointments', icon: <Calendar className="w-4 h-4" /> },
-          { href: '/receptionist/dashboard#waitlist', label: 'Live Wait List', icon: <Activity className="w-4 h-4" /> },
+          { section: 'Front Desk', items: [
+            { href: '/receptionist/dashboard', label: 'Reception Dashboard', icon: <Home className="w-4 h-4" /> },
+            { href: '/receptionist/dashboard#register', label: 'Register Walk-In', icon: <Users className="w-4 h-4" /> },
+            { href: '/receptionist/dashboard#bookings', label: 'Booked Appointments', icon: <Calendar className="w-4 h-4" /> },
+            { href: '/receptionist/dashboard#waitlist', label: 'Live Wait List', icon: <Activity className="w-4 h-4" /> },
+          ]},
         ];
       case 'DOCTOR':
         return [
-          { href: '/doctor/dashboard', label: 'Doctor Suite', icon: <Home className="w-4 h-4" /> },
-          { href: '/doctor/dashboard#consultation', label: 'Consultation Room', icon: <UserCheck className="w-4 h-4" /> },
-          { href: '/doctor/dashboard#queue', label: 'Upcoming Patients', icon: <Activity className="w-4 h-4" /> },
-          { href: '/doctor/dashboard#history', label: 'Consultation Logs', icon: <History className="w-4 h-4" /> },
+          { section: 'Consultation', items: [
+            { href: '/doctor/dashboard', label: 'Doctor Suite', icon: <Home className="w-4 h-4" /> },
+            { href: '/doctor/dashboard#consultation', label: 'Consultation Room', icon: <UserCheck className="w-4 h-4" /> },
+            { href: '/doctor/dashboard#queue', label: 'Upcoming Patients', icon: <Activity className="w-4 h-4" /> },
+            { href: '/doctor/dashboard#history', label: 'Consultation Logs', icon: <History className="w-4 h-4" /> },
+          ]},
         ];
       case 'SUPER_ADMIN':
         return [
-          { href: '/admin/super-dashboard', label: 'Super Admin Suite', icon: <Shield className="w-4 h-4 text-rose-500" /> },
-          { href: '/admin/super-dashboard#clinics', label: 'Tenant Management', icon: <Building className="w-4 h-4" /> },
-          { href: '/admin/super-dashboard#reviews', label: 'Verification Reviews', icon: <Sparkles className="w-4 h-4" /> },
-          { href: '/admin/super-dashboard#flags', label: 'Platform Flags', icon: <Settings className="w-4 h-4" /> },
-          { href: '/admin/super-dashboard#audits', label: 'Security Audits', icon: <History className="w-4 h-4" /> },
-          { href: '/admin/dashboard', label: 'Clinic Admin Panel', icon: <BarChart3 className="w-4 h-4" /> },
+          { section: 'Tenants', items: [
+            { href: '/admin/super-dashboard#clinics', label: 'Clinic Directory', icon: <Building className="w-4 h-4" /> },
+            { href: '/admin/super-dashboard#users', label: 'User Management', icon: <Users className="w-4 h-4" /> },
+            { href: '/admin/super-dashboard#verifications', label: 'Verification Reviews', icon: <Sparkles className="w-4 h-4" /> },
+          ]},
+          { section: 'System', items: [
+            { href: '/admin/super-dashboard#flags', label: 'Platform Flags', icon: <Settings className="w-4 h-4" /> },
+            { href: '/admin/super-dashboard#announcements', label: 'Announcements', icon: <Megaphone className="w-4 h-4" /> },
+            { href: '/admin/super-dashboard#settings', label: 'Platform Settings', icon: <Sliders className="w-4 h-4" /> },
+          ]},
+          { section: 'Monitoring', items: [
+            { href: '/admin/super-dashboard#audits', label: 'Security Audits', icon: <History className="w-4 h-4" /> },
+            { href: '/admin/super-dashboard#global-analytics', label: 'Platform Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+          ]},
         ];
       case 'ADMIN':
-        const adminLinks = [
-          { href: '/admin/dashboard', label: 'Analytics Panel', icon: <BarChart3 className="w-4 h-4" /> },
-          { href: '/admin/dashboard#staff', label: 'Staff Management', icon: <Users className="w-4 h-4" /> },
-          { href: '/admin/dashboard#schedules', label: 'Weekly Hours', icon: <Calendar className="w-4 h-4" /> },
-          { href: '/admin/dashboard#profile', label: 'Clinic Profile', icon: <Building className="w-4 h-4" /> },
-          { href: '/admin/dashboard#subscription', label: 'Plan & Billing', icon: <CreditCard className="w-4 h-4" /> },
+        const adminSections = [
+          { section: 'Operations', items: [
+            { href: '/admin/dashboard', label: 'Analytics Panel', icon: <BarChart3 className="w-4 h-4" /> },
+            { href: '/admin/dashboard#queue', label: 'Live Queue', icon: <Activity className="w-4 h-4" /> },
+            { href: '/admin/dashboard#patients', label: 'Patient Directory', icon: <UserCheck className="w-4 h-4" /> },
+            { href: '/admin/dashboard#doctors', label: 'Physicians List', icon: <Building className="w-4 h-4" /> },
+            { href: '/admin/dashboard#staff', label: 'Staff Management', icon: <Users className="w-4 h-4" /> },
+            { href: '/admin/dashboard#ai', label: 'AI Optimization', icon: <Sparkles className="w-4 h-4" /> },
+          ]},
+          { section: 'Clinic Setup', items: [
+            { href: '/admin/dashboard#clinic', label: 'Schedules & Holidays', icon: <Calendar className="w-4 h-4" /> },
+            { href: '/admin/dashboard#profile', label: 'Clinic Profile', icon: <Building className="w-4 h-4" /> },
+            { href: '/admin/dashboard#documents', label: 'Verification Docs', icon: <FileText className="w-4 h-4" /> },
+          ]},
+          { section: 'Business', items: [
+            { href: '/admin/dashboard#analytics', label: 'Interactive Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+            { href: '/admin/dashboard#subscription', label: 'Plan & Billing', icon: <CreditCard className="w-4 h-4" /> },
+          ]},
         ];
         if (profile?.role === 'SUPER_ADMIN') {
-          adminLinks.unshift({ href: '/admin/super-dashboard', label: 'Super Admin Suite', icon: <Shield className="w-4 h-4 text-rose-500" /> });
+          adminSections.unshift({ section: 'Platform', items: [
+            { href: '/admin/super-dashboard', label: 'Super Admin Suite', icon: <Shield className="w-4 h-4 text-rose-500" /> },
+          ]});
         }
-        return adminLinks;
+        return adminSections;
       default:
         return [];
     }
   };
 
-  const navLinks = getSidebarLinks();
+  const navSections = getSidebarLinks();
+
+  const [collapsedSections, setCollapsedSections] = useState<string[]>(() =>
+    navSections.length > 1 ? navSections.slice(1).map(s => s.section) : []
+  );
+  const toggleSection = (section: string) => {
+    setCollapsedSections(prev =>
+      prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]
+    );
+  };
+
+  const [activeHash, setActiveHash] = useState('');
+  useEffect(() => {
+    const syncHash = () => setActiveHash(window.location.hash);
+    syncHash();
+    window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-bg-base text-text-primary">
@@ -217,57 +258,51 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </button>
           </div>
 
-          {/* Collapsible tenant workspace selector */}
-          <div className="relative">
-            <button 
-              onClick={() => setClinicMenuOpen(!clinicMenuOpen)}
-              className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-border-subtle hover:bg-bg-muted/40 transition text-left"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <span className="text-base shrink-0">{currentClinic?.logo || '🏥'}</span>
-                <span className="font-bold text-xs truncate">{currentClinic?.name || 'Select Clinic'}</span>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-text-muted shrink-0" />
-            </button>
-
-            {clinicMenuOpen && (
-              <div className="absolute left-0 right-0 mt-2 z-50 rounded-xl border border-border-subtle bg-bg-surface shadow-lg py-1.5 animate-slide-up">
-                {clinics.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      setClinicById(c.id);
-                      setClinicMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-xs flex items-center justify-between hover:bg-bg-muted ${
-                      currentClinic?.id === c.id ? 'font-bold text-primary bg-primary-glow' : 'text-text-secondary'
-                    }`}
-                  >
-                    <span>{c.name}</span>
-                    {currentClinic?.id === c.id && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Navigation Links list */}
-          <nav className="flex flex-col gap-1.5">
-            {navLinks.map((link) => {
-              const active = pathname === link.href || pathname.startsWith(link.href + '/');
+          <nav className="flex flex-col gap-1">
+            {navSections.map((section) => {
+              const isCollapsed = collapsedSections.includes(section.section);
               return (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition ${
-                    active 
-                      ? 'bg-primary text-white shadow shadow-primary/10' 
-                      : 'text-text-secondary hover:bg-bg-muted hover:text-text-primary'
-                  }`}
-                >
-                  <span className="shrink-0">{link.icon}</span>
-                  {link.label}
-                </Link>
+                <div key={section.section} className="flex flex-col gap-1">
+                  <button
+                    onClick={() => toggleSection(section.section)}
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest text-text-muted hover:text-text-primary transition"
+                  >
+                    <span>{section.section}</span>
+                    {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                  {!isCollapsed && (
+                    <div className="flex flex-col gap-1">
+                      {section.items.map((link) => {
+                        const linkPath = link.href.split('#')[0];
+                        const linkHash = link.href.includes('#') ? `#${link.href.split('#')[1]}` : '';
+                        const active = linkHash
+                          ? (pathname === linkPath && activeHash === linkHash)
+                          : (pathname === linkPath || pathname.startsWith(linkPath + '/'));
+                        const linkClass = `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition ${
+                          active
+                            ? 'bg-primary text-white shadow shadow-primary/10'
+                            : 'text-text-secondary hover:bg-bg-muted hover:text-text-primary'
+                        }`;
+                        const inner = (
+                          <>
+                            <span className="shrink-0">{link.icon}</span>
+                            <span className="truncate">{link.label}</span>
+                          </>
+                        );
+                        return linkHash ? (
+                          <a key={link.label} href={link.href} className={linkClass}>
+                            {inner}
+                          </a>
+                        ) : (
+                          <Link key={link.label} href={link.href} className={linkClass}>
+                            {inner}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>

@@ -1,8 +1,13 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import NextLink from 'next/link';
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import Button from '@mui/material/Button';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 export interface AuthLayoutProps {
   children: React.ReactNode;
@@ -12,59 +17,160 @@ export interface AuthLayoutProps {
 
 export const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle }) => {
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-bg-base text-text-primary overflow-hidden">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
+        bgcolor: 'background.default',
+        color: 'text.primary',
+        overflow: 'hidden',
+      }}
+    >
       {/* Left Column: Split Graphic Screen */}
-      <div className="hidden lg:flex flex-col justify-between p-12 bg-gradient-to-tr from-primary to-indigo-900 text-white relative overflow-hidden">
-        {/* Abstract glowing patterns */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-white/5 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-white/5 blur-3xl pointer-events-none" />
-        
-        {/* Header brand link */}
-        <Link href="/" className="flex items-center gap-2 relative z-10 w-fit">
-          <span className="text-2xl px-2.5 py-1 rounded-xl bg-white text-primary font-black leading-none">
+      <Box
+        sx={{
+          display: { xs: 'none', lg: 'flex' },
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          p: 6,
+          color: 'white',
+          position: 'relative',
+          overflow: 'hidden',
+          background: 'linear-gradient(135deg, #4f46e5 0%, #312e81 100%)',
+        }}
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '25%',
+            left: '25%',
+            width: 384,
+            height: 384,
+            borderRadius: '50%',
+            bgcolor: 'rgba(255,255,255,0.06)',
+            filter: 'blur(72px)',
+            pointerEvents: 'none',
+          }}
+        />
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: '25%',
+            right: '25%',
+            width: 384,
+            height: 384,
+            borderRadius: '50%',
+            bgcolor: 'rgba(255,255,255,0.06)',
+            filter: 'blur(72px)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        <NextLink href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, width: 'fit-content', position: 'relative', zIndex: 1 }}>
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: 3,
+              bgcolor: 'white',
+              color: 'primary.main',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 900,
+              fontSize: 20,
+            }}
+          >
             Q
-          </span>
-          <span className="font-extrabold text-lg tracking-tight">Q-Clinix</span>
-        </Link>
+          </Box>
+          <Typography component="span" sx={{ fontWeight: 800, fontSize: 18, color: 'white' }}>
+            Q-Clinix
+          </Typography>
+        </NextLink>
 
-        {/* Big quote/headline details */}
-        <div className="relative z-10 my-auto max-w-md">
-          <span className="text-xs uppercase font-extrabold tracking-wider bg-white/10 px-3 py-1 rounded-full">
+        <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 420, my: 'auto' }}>
+          <Box
+            component="span"
+            sx={{
+              display: 'inline-flex',
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              fontWeight: 800,
+              bgcolor: 'rgba(255,255,255,0.12)',
+              px: 1.5,
+              py: 0.5,
+              borderRadius: 99,
+            }}
+          >
             Modern Patient Flow
-          </span>
-          <h1 className="text-4xl font-extrabold mt-6 leading-tight tracking-tight">
+          </Box>
+          <Typography
+            variant="h3"
+            sx={{ mt: 3, lineHeight: 1.15, color: 'white', fontWeight: 900, letterSpacing: '-0.02em' }}
+          >
             Coordinate waiting halls, consult doctors, and optimize telemetry.
-          </h1>
-          <p className="text-sm text-indigo-100 mt-4 leading-relaxed font-normal">
+          </Typography>
+          <Typography sx={{ mt: 2, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, fontWeight: 400 }}>
             Join hundreds of modern clinics migrating to AI-driven wait list telemetry and real-time check-in kiosks.
-          </p>
-        </div>
+          </Typography>
+        </Box>
 
-        {/* Footer info */}
-        <div className="text-[10px] text-indigo-200 relative z-10">
+        <Typography sx={{ position: 'relative', zIndex: 1, fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>
           © 2026 Q-Clinix Inc. HIPAA Compliant Multi-Tenant Queue SaaS.
-        </div>
-      </div>
+        </Typography>
+      </Box>
 
       {/* Right Column: Dynamic Form Screen */}
-      <div className="flex flex-col justify-center items-center p-6 sm:p-12 relative overflow-y-auto">
-        <Link
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          p: { xs: 3, sm: 6 },
+          position: 'relative',
+          overflowY: 'auto',
+        }}
+      >
+        <Button
+          component={NextLink}
           href="/"
-          className="absolute top-6 left-6 text-xs font-bold text-text-secondary hover:text-primary flex items-center gap-1.5 transition"
+          startIcon={<ArrowBackIcon />}
+          size="small"
+          sx={{ position: 'absolute', top: 24, left: 24, color: 'text.secondary' }}
         >
-          <ArrowLeft className="w-4 h-4" /> Home Page
-        </Link>
+          Home Page
+        </Button>
 
-        <div className="w-full max-w-md bg-bg-surface border border-border-subtle shadow-lg rounded-2xl p-6 sm:p-10 flex flex-col gap-6 relative z-10">
-          <div className="text-center">
-            <h2 className="text-2xl font-black text-text-primary tracking-tight">{title}</h2>
-            <p className="text-xs text-text-secondary mt-1">{subtitle}</p>
-          </div>
+        <Card
+          elevation={6}
+          sx={{
+            width: '100%',
+            maxWidth: 480,
+            borderRadius: 4,
+            p: { xs: 3, sm: 5 },
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 900, letterSpacing: '-0.01em' }}>
+              {title}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 600 }}>
+              {subtitle}
+            </Typography>
+          </Box>
 
-          <div className="flex flex-col gap-4">{children}</div>
-        </div>
-      </div>
-    </div>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>{children}</Box>
+        </Card>
+      </Box>
+    </Box>
   );
 };
 export default AuthLayout;

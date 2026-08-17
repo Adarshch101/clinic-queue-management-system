@@ -3,6 +3,7 @@ import { Outfit } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import { AuthProvider } from '@/features/auth/context/AuthContext';
+import { MuiThemeProvider } from '@/components/providers/MuiThemeProvider';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -20,11 +21,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} h-full antialiased`}>
+    <html lang="en" data-scroll-behavior="smooth" className={`${outfit.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans antialiased text-foreground bg-background">
         <AuthProvider>
           <AppProvider>
-            {children}
+            <MuiThemeProvider>
+              {children}
+            </MuiThemeProvider>
           </AppProvider>
         </AuthProvider>
       </body>

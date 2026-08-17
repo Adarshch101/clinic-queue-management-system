@@ -9,11 +9,10 @@ import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
-import { Tabs } from '@/components/ui/Tabs';
 import { 
-  Building, Users, Calendar, BarChart3, CreditCard, 
-  Settings, Activity, Clock, UserCheck, Sparkles, 
-  BrainCircuit, Sliders, Home, UserPlus, 
+  Building, Users, Calendar, 
+  Activity, Clock, UserCheck, 
+  Sliders, UserPlus, 
   FileText, Trash2, Upload, Play, Pause, ChevronRight
 } from 'lucide-react';
 import type { Doctor, Patient } from '@/lib/mockData';
@@ -246,6 +245,17 @@ export default function AdminDashboard() {
     const id = setTimeout(() => fetchAnalytics(), 0);
     return () => clearTimeout(id);
   }, [activeTab, analyticsRange, currentClinic?.id]);
+
+  // Keep the active tab in sync with the URL hash (used by sidebar deep links)
+  useEffect(() => {
+    const syncTabFromHash = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash) setActiveTab(hash);
+    };
+    syncTabFromHash();
+    window.addEventListener('hashchange', syncTabFromHash);
+    return () => window.removeEventListener('hashchange', syncTabFromHash);
+  }, []);
 
   const handleExportCSV = async () => {
     setExportLoading(true);
@@ -555,26 +565,6 @@ export default function AdminDashboard() {
             Active: {currentClinic?.name}
           </Badge>
         </div>
-
-        {/* Tab switcher */}
-        <Tabs
-          activeId={activeTab}
-          onChange={setActiveTab}
-          options={[
-            { id: 'overview', label: 'Dashboard Home', icon: <Home className="w-4 h-4" /> },
-            { id: 'queue', label: 'Live Queue Module', icon: <Activity className="w-4 h-4" /> },
-            { id: 'patients', label: 'Patient Directory', icon: <Users className="w-4 h-4" /> },
-            { id: 'doctors', label: 'Physicians List', icon: <Building className="w-4 h-4" /> },
-            { id: 'staff', label: 'Staff Management', icon: <UserPlus className="w-4 h-4" /> },
-            { id: 'profile', label: 'Clinic Profile', icon: <Settings className="w-4 h-4" /> },
-            { id: 'documents', label: 'Verification Docs', icon: <FileText className="w-4 h-4" /> },
-            { id: 'analytics', label: 'Interactive Analytics', icon: <BarChart3 className="w-4 h-4" /> },
-            { id: 'clinic', label: 'Schedules & Holidays', icon: <Calendar className="w-4 h-4" /> },
-            { id: 'ai', label: 'AI Optimization Console', icon: <BrainCircuit className="w-4 h-4" /> },
-            { id: 'subscription', label: 'SaaS Plan & Billing', icon: <CreditCard className="w-4 h-4" /> },
-            ...(profile?.role === 'SUPER_ADMIN' ? [{ id: 'reviews', label: 'Verification Reviews', icon: <Sparkles className="w-4 h-4" /> }] : [])
-          ]}
-        />
 
         {/* TAB 1: OVERVIEW HOMEPAGE */}
         {activeTab === 'overview' && (

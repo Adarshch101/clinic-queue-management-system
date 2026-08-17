@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, StatsCard } from '@/components/ui/Card';
@@ -8,12 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
-import { Tabs } from '@/components/ui/Tabs';
 import { 
-  Building, Users, Shield, Sliders, ToggleLeft, ToggleRight, 
-  Settings, History, CheckCircle2, 
-  Ban, Activity, Sparkles, 
-  Megaphone, ChevronRight, Globe, BarChart3, Clock
+  Building, Users, Shield, ToggleLeft, ToggleRight, 
+  CheckCircle2, 
+  Ban, Activity, 
+  ChevronRight, Clock
 } from 'lucide-react';
 
 interface SuperStats {
@@ -102,6 +101,18 @@ interface SuperHistoryLog {
   changedBy: string;
 }
 
+interface SuperPlatformUser {
+  id: string;
+  userId: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  role: 'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN';
+  clinicId: string;
+  clinicName: string;
+  createdAt: string;
+}
+
 interface SuperAdminData {
   stats: SuperStats;
   clinics: SuperClinic[];
@@ -121,6 +132,23 @@ interface GlobalAnalyticsData {
     avgWaitTime: number;
   };
   visitsTimeline: { date: string }[];
+}
+
+interface ClinicScopeStats {
+  stats: {
+    totalPatients: number;
+    waitingCount: number;
+    completedCount: number;
+    cancelledCount: number;
+    averageWaitTime: number;
+    averageConsultTime: number;
+  };
+  staff: {
+    admins: { id: string; name: string }[];
+    receptionists: { id: string; name: string }[];
+    doctors: { id: string; name: string }[];
+  };
+  recentActivity: SuperAuditLog[];
 }
 
 export default function SuperAdminDashboard() {
@@ -179,10 +207,75 @@ export default function SuperAdminDashboard() {
   const [globalAnalyticsRange, setGlobalAnalyticsRange] = useState('7d');
   const [loadingGlobalAnalytics, setLoadingGlobalAnalytics] = useState(false);
 
+  // Platform Users Directory States
+  const [platformUsers, setPlatformUsers] = useState<SuperPlatformUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersQuery, setUsersQuery] = useState('');
+  const [usersRoleFilter, setUsersRoleFilter] = useState('ALL');
+
+  // Clinic-scoped analytics selector
+  const [selectedClinicId, setSelectedClinicId] = useState('');
+  const [clinicScopeStats, setClinicScopeStats] = useState<ClinicScopeStats | null>(null);
+  const [clinicScopeLoading, setClinicScopeLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const id = setTimeout(() => {
+      if (cancelled) return;
+      if (!selectedClinicId) {
+        setClinicScopeStats(null);
+        setClinicScopeLoading(false);
+        return;
+      }
+      setClinicScopeLoading(true);
+      fetch(`/api/admin/dashboard-stats?clinicId=${selectedClinicId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!cancelled && data) setClinicScopeStats(data);
+        })
+        .catch((e) => console.error('Error fetching clinic scope stats:', e))
+        .finally(() => {
+          if (!cancelled) setClinicScopeLoading(false);
+        });
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
+  }, [selectedClinicId]);
+
+  const fetchPlatformUsers = useCallback(async () => {
+    setUsersLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (usersRoleFilter !== 'ALL') params.set('role', usersRoleFilter);
+      if (usersQuery.trim()) params.set('query', usersQuery.trim());
+      const res = await fetch(`/api/super-admin/users?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPlatformUsers(data.users || []);
+      }
+    } catch (e) {
+      console.error('Error fetching platform users:', e);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [usersRoleFilter, usersQuery]);
+
+  useEffect(() => {
+    if (activeTab !== 'users') return;
+    const id = setTimeout(() => fetchPlatformUsers(), 0);
+    return () => clearTimeout(id);
+  }, [activeTab, fetchPlatformUsers]);
+
   const fetchGlobalAnalytics = async () => {
     setLoadingGlobalAnalytics(true);
     try {
-      const res = await fetch(`/api/analytics/dashboard?dateRange=${globalAnalyticsRange}&userId=${profile?.userId || 'admin'}`);
+      const params = new URLSearchParams();
+      params.set('dateRange', globalAnalyticsRange);
+      params.set('userId', profile?.userId || 'admin');
+      if (selectedClinicId) params.set('clinicId', selectedClinicId);
+      const res = await fetch(`/api/analytics/dashboard?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setGlobalAnalyticsData(data);
@@ -198,7 +291,7 @@ export default function SuperAdminDashboard() {
     if (activeTab !== 'global-analytics') return;
     const id = setTimeout(() => fetchGlobalAnalytics(), 0);
     return () => clearTimeout(id);
-  }, [activeTab, globalAnalyticsRange]);
+  }, [activeTab, globalAnalyticsRange, selectedClinicId]);
 
   const fetchSuperAdminData = async () => {
     setLoading(true);
@@ -224,6 +317,17 @@ export default function SuperAdminDashboard() {
   useEffect(() => {
     const id = setTimeout(() => fetchSuperAdminData(), 0);
     return () => clearTimeout(id);
+  }, []);
+
+  // Keep the active tab in sync with the URL hash (used by sidebar deep links)
+  useEffect(() => {
+    const syncTabFromHash = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash) setActiveTab(hash);
+    };
+    syncTabFromHash();
+    window.addEventListener('hashchange', syncTabFromHash);
+    return () => window.removeEventListener('hashchange', syncTabFromHash);
   }, []);
 
   // 1. Feature Flag toggling
@@ -453,30 +557,148 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <select
+              value={selectedClinicId}
+              onChange={(e) => setSelectedClinicId(e.target.value)}
+              className="p-2 border border-border-subtle rounded-xl bg-bg-surface text-xs font-bold text-text-primary focus:outline-none shrink-0 max-w-56"
+              title="Filter platform data by a specific clinic"
+            >
+              <option value="">All Clinics (Platform-wide)</option>
+              {clinics.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
             <Badge variant="primary" className="bg-primary/10 text-primary border-primary/20 text-[9px] font-black uppercase">
               Platform ver: 1.0.4-SaaS
             </Badge>
           </div>
         </div>
 
-        {/* Tabs Control */}
-        <Tabs
-          activeId={activeTab}
-          onChange={setActiveTab}
-          options={[
-            { id: 'overview', label: 'Platform Home', icon: <Globe className="w-4 h-4" /> },
-            { id: 'clinics', label: 'Clinic Directory', icon: <Building className="w-4 h-4" /> },
-            { id: 'verifications', label: 'Verification requests', icon: <Sparkles className="w-4 h-4" /> },
-            { id: 'flags', label: 'Feature Flags', icon: <Sliders className="w-4 h-4" /> },
-            { id: 'announcements', label: 'Announcements', icon: <Megaphone className="w-4 h-4" /> },
-            { id: 'settings', label: 'Platform Settings', icon: <Settings className="w-4 h-4" /> },
-            { id: 'audits', label: 'Security Audits', icon: <History className="w-4 h-4" /> },
-            { id: 'global-analytics', label: 'Platform Analytics', icon: <BarChart3 className="w-4 h-4" /> },
-          ]}
-        />
-
         {/* TAB 1: OVERVIEW HOMEPAGE */}
         {activeTab === 'overview' && (
+          selectedClinicId && clinicScopeStats ? (
+            <div className="flex flex-col gap-8 animate-fadeIn">
+
+              {/* Deep-dive header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                  <h3 className="font-extrabold text-sm text-text-primary">
+                    Clinic Deep-Dive: {clinics.find((c) => c.id === selectedClinicId)?.name || 'Selected Clinic'}
+                  </h3>
+                  <p className="text-[10px] text-text-muted mt-0.5">Live operational intelligence for the selected tenant — tokens, staffing, and recent activity</p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setSelectedClinicId('')}>
+                  Back to platform-wide view
+                </Button>
+              </div>
+
+              {/* Clinic KPI cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatsCard
+                  label="Tokens Issued Today"
+                  value={clinicScopeStats.stats.totalPatients}
+                  change="All counters"
+                  icon={<Activity className="w-5 h-5 text-primary" />}
+                />
+                <StatsCard
+                  label="Currently Waiting"
+                  value={clinicScopeStats.stats.waitingCount}
+                  change="In queue right now"
+                  icon={<Clock className="w-5 h-5 text-amber-500" />}
+                />
+                <StatsCard
+                  label="Completed Today"
+                  value={clinicScopeStats.stats.completedCount}
+                  change="Successfully served"
+                  icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+                />
+                <StatsCard
+                  label="Cancelled Today"
+                  value={clinicScopeStats.stats.cancelledCount}
+                  change="No-show or skipped"
+                  icon={<Ban className="w-5 h-5 text-danger" />}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                {/* Workforce composition */}
+                <Card className="lg:col-span-2 flex flex-col gap-4">
+                  <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Workforce Composition</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-4 border border-border-subtle rounded-2xl flex flex-col gap-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Clinic Admins</span>
+                      <span className="text-2xl font-extrabold">{clinicScopeStats.staff.admins.length}</span>
+                      <span className="text-[10px] text-text-secondary font-semibold">{clinicScopeStats.staff.admins.map((a) => a.name).join(', ') || '—'}</span>
+                    </div>
+                    <div className="p-4 border border-border-subtle rounded-2xl flex flex-col gap-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Receptionists</span>
+                      <span className="text-2xl font-extrabold">{clinicScopeStats.staff.receptionists.length}</span>
+                      <span className="text-[10px] text-text-secondary font-semibold">{clinicScopeStats.staff.receptionists.map((a) => a.name).join(', ') || '—'}</span>
+                    </div>
+                    <div className="p-4 border border-border-subtle rounded-2xl flex flex-col gap-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Doctors</span>
+                      <span className="text-2xl font-extrabold">{clinicScopeStats.staff.doctors.length}</span>
+                      <span className="text-[10px] text-text-secondary font-semibold">{clinicScopeStats.staff.doctors.map((a) => a.name).join(', ') || '—'}</span>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Queue efficiency benchmarks */}
+                <Card className="flex flex-col gap-4">
+                  <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Queue Efficiency Benchmarks</h3>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-text-secondary">Average Wait Time</span>
+                      <span className="text-sm font-extrabold text-text-primary">{clinicScopeStats.stats.averageWaitTime}m</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-text-secondary">Average Consult Time</span>
+                      <span className="text-sm font-extrabold text-text-primary">{clinicScopeStats.stats.averageConsultTime}m</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-text-secondary">Completion Rate</span>
+                      <span className="text-sm font-extrabold text-emerald-500">
+                        {clinicScopeStats.stats.totalPatients > 0
+                          ? Math.round((clinicScopeStats.stats.completedCount / clinicScopeStats.stats.totalPatients) * 100)
+                          : 0}%
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Recent clinic activity */}
+              <Card className="flex flex-col gap-4">
+                <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Recent Clinic Activity</h3>
+                <div className="flex flex-col gap-3.5 font-semibold text-xs text-text-secondary leading-normal">
+                  {clinicScopeStats.recentActivity.length === 0 ? (
+                    <span className="text-text-muted">No recent activity for this clinic.</span>
+                  ) : (
+                    clinicScopeStats.recentActivity.slice(0, 6).map((log) => (
+                      <div key={log.id} className="flex gap-3 items-start border-b border-border-subtle/30 pb-2.5 last:border-0 last:pb-0">
+                        <span className="text-base select-none shrink-0">🛡️</span>
+                        <div className="flex flex-col gap-0.5 truncate">
+                          <div className="font-extrabold text-text-primary truncate">{log.action.replace(/_/g, ' ')}</div>
+                          <div className="text-[10px] text-text-secondary mt-0.5 truncate">{log.details}</div>
+                          <span className="text-[9px] text-text-muted mt-1">{new Date(log.createdAt).toLocaleTimeString()}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
+            </div>
+          ) : selectedClinicId && (clinicScopeLoading || !clinicScopeStats) ? (
+            <div className="flex flex-col gap-6 animate-fadeIn">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-28 rounded-2xl bg-bg-muted animate-pulse" />
+                ))}
+              </div>
+              <p className="text-xs font-bold text-text-muted animate-pulse">Loading clinic intelligence...</p>
+            </div>
+          ) : (
           <div className="flex flex-col gap-8 animate-fadeIn">
             
             {/* KPI statistics cards */}
@@ -571,7 +793,7 @@ export default function SuperAdminDashboard() {
             </div>
 
           </div>
-        )}
+          ))}
 
         {/* TAB 2: CLINICS DIRECTORY */}
         {activeTab === 'clinics' && (
@@ -1245,8 +1467,16 @@ export default function SuperAdminDashboard() {
             {/* Header controls */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-bg-surface border border-border-subtle p-5 rounded-3xl shadow-sm">
               <div>
-                <h3 className="font-extrabold text-sm text-text-primary">Global Platform Business Intelligence</h3>
-                <p className="text-[10px] text-text-muted mt-0.5">Aggregate tenant registrations, platform growth indices, and performance benchmarks</p>
+                <h3 className="font-extrabold text-sm text-text-primary">
+                  {selectedClinicId
+                    ? `Business Intelligence — ${clinics.find((c) => c.id === selectedClinicId)?.name || 'Selected Clinic'}`
+                    : 'Global Platform Business Intelligence'}
+                </h3>
+                <p className="text-[10px] text-text-muted mt-0.5">
+                  {selectedClinicId
+                    ? 'Tenant-scoped visits, tokens, and performance benchmarks for the selected clinic'
+                    : 'Aggregate tenant registrations, platform growth indices, and performance benchmarks'}
+                </p>
               </div>
 
               <select 
@@ -1272,13 +1502,13 @@ export default function SuperAdminDashboard() {
                 {/* Platform Overview stats */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                   <StatsCard 
-                    label="Total Registered Tenants"
+                    label={selectedClinicId ? 'Clinic Tokens' : 'Total Registered Tenants'}
                     value={globalAnalyticsData.clinicsCount}
-                    change="Active clinic portals"
+                    change={selectedClinicId ? 'Visits processed' : 'Active clinic portals'}
                     icon={<Building className="w-5 h-5 text-primary" />}
                   />
                   <StatsCard 
-                    label="Total Platform Tokens"
+                    label={selectedClinicId ? 'Patients This Month' : 'Total Platform Tokens'}
                     value={globalAnalyticsData.kpis.patientsThisMonth}
                     change="Visits processed"
                     icon={<Users className="w-5 h-5 text-emerald-500" />}
@@ -1286,7 +1516,7 @@ export default function SuperAdminDashboard() {
                   <StatsCard 
                     label="Average Wait Benchmarks"
                     value={`${globalAnalyticsData.kpis.avgWaitTime}m`}
-                    change="Across all doctor chambers"
+                    change={selectedClinicId ? 'For the selected clinic' : 'Across all doctor chambers'}
                     icon={<Clock className="w-5 h-5 text-indigo-500" />}
                   />
                   <StatsCard 
@@ -1355,6 +1585,92 @@ export default function SuperAdminDashboard() {
               </>
             )}
 
+          </div>
+        )}
+
+        {/* TAB 9: PLATFORM USERS DIRECTORY */}
+        {activeTab === 'users' && (
+          <div className="flex flex-col gap-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h3 className="font-extrabold text-sm text-text-primary">Platform User Directory</h3>
+                <p className="text-[10px] text-text-muted mt-0.5">Every patient, staff member, doctor, and clinic admin across all tenants</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <select
+                  value={usersRoleFilter}
+                  onChange={(e) => setUsersRoleFilter(e.target.value)}
+                  className="p-2 border border-border-subtle rounded-xl bg-bg-surface text-xs font-bold text-text-primary focus:outline-none shrink-0"
+                >
+                  <option value="ALL">All Roles</option>
+                  <option value="ADMIN">Clinic Admins</option>
+                  <option value="DOCTOR">Doctors</option>
+                  <option value="RECEPTIONIST">Staff</option>
+                  <option value="PATIENT">Patients</option>
+                </select>
+                <Input
+                  isSearch
+                  placeholder="Search name, email, clinic..."
+                  value={usersQuery}
+                  onChange={(e) => setUsersQuery(e.target.value)}
+                  className="w-full sm:max-w-[280px]"
+                />
+              </div>
+            </div>
+
+            {usersLoading ? (
+              <div className="flex flex-col gap-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 rounded-2xl bg-bg-muted animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <Card className="flex flex-col gap-1">
+                <div className="grid grid-cols-[1fr_1.4fr_auto] sm:grid-cols-[1fr_1.4fr_1fr_auto] gap-3 px-4 py-2.5 border-b border-border-subtle text-[9px] font-black uppercase tracking-widest text-text-muted">
+                  <span>User</span>
+                  <span>Email</span>
+                  <span className="hidden sm:block">Clinic</span>
+                  <span>Role</span>
+                </div>
+
+                {platformUsers.length === 0 ? (
+                  <div className="py-10 text-center text-xs text-text-muted border-b border-border-subtle/50">
+                    No users match the current filters.
+                  </div>
+                ) : (
+                  platformUsers.map((u) => (
+                    <div
+                      key={`${u.role}-${u.id}`}
+                      className="grid grid-cols-[1fr_1.4fr_auto] sm:grid-cols-[1fr_1.4fr_1fr_auto] gap-3 items-center px-4 py-3 border-b border-border-subtle/50 last:border-0 text-xs font-semibold text-text-secondary hover:bg-bg-muted/20 transition"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-indigo-400 text-white font-bold flex items-center justify-center text-[10px] shrink-0">
+                          {u.name.charAt(0).toUpperCase()}
+                        </span>
+                        <div className="truncate">
+                          <div className="text-text-primary font-bold truncate">{u.name}</div>
+                          <div className="text-[9px] text-text-muted uppercase tracking-wider">
+                            {u.userId ? (u.userId.startsWith('staff-auth') ? 'Invited (email match)' : 'Registered') : 'Walk-in'}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="truncate">{u.email || '—'}</span>
+                      <span className="hidden sm:block truncate">{u.clinicName}</span>
+                      <Badge
+                        variant={
+                          u.role === 'ADMIN' ? 'primary' : u.role === 'DOCTOR' ? 'success' : u.role === 'RECEPTIONIST' ? 'warning' : 'secondary'
+                        }
+                        size="sm"
+                        className="justify-self-end"
+                      >
+                        {u.role}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </Card>
+            )}
           </div>
         )}
 

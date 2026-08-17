@@ -12,6 +12,70 @@ export interface UserSessionProfile {
 }
 
 export const authService = {
+  // Patient/User Registration Action
+  async registerPatient(data: {
+    name: string;
+    email: string;
+    phone: string;
+    age: number;
+    gender: 'Male' | 'Female' | 'Other';
+    password: string;
+  }) {
+    // 1. Trigger signup in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (authError) throw authError;
+    if (!authData.user) throw new Error('No user returned');
+    const userId = authData.user.id;
+
+    // 2. Call register-patient API to write patient profile to PostgreSQL
+    const res = await fetch('/api/auth/register-patient', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        age: data.age,
+        gender: data.gender,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorJson = await res.json().catch(() => ({}));
+      throw new Error(errorJson.error || 'Failed to complete patient database registration');
+    }
+
+    const resData = await res.json();
+
+    // 3. Auto-login after successful registration
+    const { data: { session }, error: loginError } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (loginError) throw loginError;
+    if (session?.access_token) {
+      await fetch('/api/auth/set-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: session.access_token }),
+      });
+    }
+
+    await this.logAuditEvent(
+      userId,
+      'REGISTRATION',
+      `Registered patient account "${data.name}"`,
+    );
+
+    return resData;
+  },
+
   // Helper to log audit events into the database
   async logAuditEvent(userId: string, action: string, details: string, clinicId?: string) {
     try {

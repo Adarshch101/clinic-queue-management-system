@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/apiAuth';
+import { requireAuth, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
   const auth = requireAuth(request);
@@ -10,16 +10,30 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
+    const userId = searchParams.get('userId');
 
     let resolvedPatientId = patientId;
 
+    // Patients can only ever see their own visits.
     if (session.role === 'PATIENT') {
       const patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
+      if (patient) resolvedPatientId = patient.id;
+    } else if (userId) {
+      // Staff may look up a patient's visits via the patient's auth userId.
+      const patient = await prisma.patient.findUnique({ where: { userId } });
       if (patient) resolvedPatientId = patient.id;
     }
 
     if (!resolvedPatientId) {
       return NextResponse.json([]);
+    }
+
+    // Staff must only access visits of patients belonging to their own clinic.
+    if (session.role !== 'PATIENT') {
+      const targetPatient = await prisma.patient.findUnique({ where: { id: resolvedPatientId } });
+      if (!targetPatient || !sessionHasClinicAccess(session, targetPatient.clinicId)) {
+        return NextResponse.json({ error: 'You do not have access to this patient' }, { status: 403 });
+      }
     }
 
     const visits = await prisma.visit.findMany({

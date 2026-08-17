@@ -6,8 +6,7 @@ import { authService } from '../services/authService';
 import { 
   validateEmail, 
   validatePassword, 
-  validatePhone, 
-  validatePincode 
+  validatePhone 
 } from '../validators/authValidators';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
@@ -19,48 +18,60 @@ import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import CircularProgress from '@mui/material/CircularProgress';
-import StorefrontIcon from '@mui/icons-material/Storefront';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PersonIcon from '@mui/icons-material/Person';
-import KeyIcon from '@mui/icons-material/Key';
+import EmailIcon from '@mui/icons-material/Email';
+import LockIcon from '@mui/icons-material/Lock';
 
-export const RegisterForm: React.FC = () => {
+export const PatientRegisterForm: React.FC = () => {
   const router = useRouter();
 
-  const [clinicName, setClinicName] = useState('');
-  const [subdomain, setSubdomain] = useState('');
-  const [ownerName, setOwnerName] = useState('');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [pincode, setPincode] = useState('');
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
 
+  const [nameError, setNameError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [ageError, setAgeError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [pincodeError, setPincodeError] = useState<string | null>(null);
   const [generalError, setGeneralError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNameError(null);
     setEmailError(null);
     setPhoneError(null);
+    setAgeError(null);
     setPasswordError(null);
-    setPincodeError(null);
     setGeneralError(null);
+
+    if (!name.trim()) {
+      setNameError('Name is required');
+      return;
+    }
+    if (name.trim().length < 2 || name.trim().length > 120) {
+      setNameError('Name must be between 2 and 120 characters');
+      return;
+    }
 
     const emailErr = validateEmail(email);
     if (emailErr) { setEmailError(emailErr); return; }
 
     const phoneErr = validatePhone(phone);
     if (phoneErr) { setPhoneError(phoneErr); return; }
+
+    const parsedAge = parseInt(age, 10);
+    if (!age || Number.isNaN(parsedAge) || parsedAge < 1 || parsedAge > 120) {
+      setAgeError('Please enter a valid age (1-120)');
+      return;
+    }
 
     const passErr = validatePassword(password);
     if (passErr) { setPasswordError(passErr); return; }
@@ -70,9 +81,6 @@ export const RegisterForm: React.FC = () => {
       return;
     }
 
-    const pinErr = validatePincode(pincode);
-    if (pinErr) { setPincodeError(pinErr); return; }
-
     if (!termsAccepted) {
       setGeneralError('You must accept the terms of service to proceed.');
       return;
@@ -80,23 +88,19 @@ export const RegisterForm: React.FC = () => {
 
     setLoading(true);
     try {
-      await authService.registerClinic({
-        clinicName,
-        subdomain: subdomain.toLowerCase().replace(/[^a-z0-9]/g, ''),
-        ownerName,
+      await authService.registerPatient({
+        name: name.trim(),
         email,
         phone,
-        address,
-        city,
-        state,
-        pincode,
+        age: parsedAge,
+        gender,
         password,
       });
 
-      router.push('/auth/pending');
+      router.push('/patient/dashboard');
     } catch (err) {
-      console.error('Registration submit error:', err);
-      setGeneralError(err instanceof Error ? err.message : String(err) || 'Verification registration failed. Please try again.');
+      console.error('Patient registration submit error:', err);
+      setGeneralError(err instanceof Error ? err.message : String(err) || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -115,98 +119,73 @@ export const RegisterForm: React.FC = () => {
     <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {generalError && <Alert severity="error" sx={{ fontSize: 13, fontWeight: 700 }}>{generalError}</Alert>}
 
-      {/* Section: Clinic Info */}
+      {/* Section: Personal Info */}
       <Box>
-        {sectionLabel(<StorefrontIcon fontSize="small" />, 'Clinic Workspace Detail')}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-          <TextField
-            label="Clinic Name"
-            required
-            fullWidth
-            placeholder="e.g. CareFirst Med"
-            value={clinicName}
-            onChange={(e) => setClinicName(e.target.value)}
-          />
-          <TextField
-            label="SaaS Subdomain"
-            required
-            fullWidth
-            placeholder="carefirst"
-            value={subdomain}
-            onChange={(e) => setSubdomain(e.target.value)}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <Box component="span" sx={{ fontSize: 11, fontWeight: 800, color: 'text.muted', letterSpacing: '0.05em' }}>
-                    .q-clinix.com
-                  </Box>
-                ),
-              },
-            }}
-          />
-        </Stack>
-      </Box>
-
-      <Divider />
-
-      {/* Section: Location Info */}
-      <Box>
-        {sectionLabel(<LocationOnIcon fontSize="small" />, 'Address & Location')}
+        {sectionLabel(<PersonIcon fontSize="small" />, 'Personal Information')}
         <TextField
-          label="Street Address"
+          label="Full Name"
           required
           fullWidth
-          placeholder="e.g. 742 Evergreen Terrace"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
+          placeholder="e.g. John Doe"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (nameError) setNameError(null);
+          }}
+          error={!!nameError}
+          helperText={nameError || undefined}
           sx={{ mb: 1.5 }}
         />
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
           <TextField
-            label="City"
+            label="Age"
+            type="number"
             required
             fullWidth
-            placeholder="Springfield"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-          />
-          <TextField
-            label="State"
-            required
-            fullWidth
-            placeholder="IL"
-            value={state}
-            onChange={(e) => setState(e.target.value)}
-          />
-          <TextField
-            label="Pincode/ZIP"
-            required
-            fullWidth
-            placeholder="62704"
-            value={pincode}
+            placeholder="30"
+            value={age}
             onChange={(e) => {
-              setPincode(e.target.value);
-              if (pincodeError) setPincodeError(null);
+              setAge(e.target.value);
+              if (ageError) setAgeError(null);
             }}
-            error={!!pincodeError}
-            helperText={pincodeError || undefined}
+            error={!!ageError}
+            helperText={ageError || undefined}
           />
+          <TextField
+            select
+            label="Gender"
+            required
+            fullWidth
+            value={gender}
+            onChange={(e) => setGender(e.target.value as 'Male' | 'Female' | 'Other')}
+            sx={{ minWidth: 120 }}
+          >
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </TextField>
         </Stack>
       </Box>
 
       <Divider />
 
-      {/* Section: Administrator Info */}
+      {/* Section: Contact Info */}
       <Box>
-        {sectionLabel(<PersonIcon fontSize="small" />, 'Clinic Administrator Profile')}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 1.5 }}>
+        {sectionLabel(<EmailIcon fontSize="small" />, 'Contact Details')}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
           <TextField
-            label="Administrator Name"
+            label="Email Address"
+            type="email"
             required
             fullWidth
-            placeholder="Dr. John Doe"
-            value={ownerName}
-            onChange={(e) => setOwnerName(e.target.value)}
+            placeholder="john@example.com"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (emailError) setEmailError(null);
+            }}
+            error={!!emailError}
+            helperText={emailError || undefined}
           />
           <TextField
             label="Phone Number"
@@ -221,29 +200,24 @@ export const RegisterForm: React.FC = () => {
             }}
             error={!!phoneError}
             helperText={phoneError || undefined}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <Box component="span" sx={{ fontSize: 11, fontWeight: 800, color: 'text.muted', letterSpacing: '0.05em' }}>
+                    E.164 format
+                  </Box>
+                ),
+              },
+            }}
           />
         </Stack>
-        <TextField
-          label="Administrative Email"
-          type="email"
-          required
-          fullWidth
-          placeholder="admin@carefirst.com"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            if (emailError) setEmailError(null);
-          }}
-          error={!!emailError}
-          helperText={emailError || undefined}
-        />
       </Box>
 
       <Divider />
 
-      {/* Section: Credentials Pass */}
+      {/* Section: Credentials */}
       <Box>
-        {sectionLabel(<KeyIcon fontSize="small" />, 'Secure Credentials')}
+        {sectionLabel(<LockIcon fontSize="small" />, 'Secure Credentials')}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
           <TextField
             label="Password"
@@ -258,6 +232,15 @@ export const RegisterForm: React.FC = () => {
             }}
             error={!!passwordError}
             helperText={passwordError || undefined}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <Box component="span" sx={{ fontSize: 11, fontWeight: 800, color: 'text.muted', letterSpacing: '0.05em' }}>
+                    Min 8 chars, 1 upper, 1 lower, 1 num, 1 special
+                  </Box>
+                ),
+              },
+            }}
           />
           <TextField
             label="Confirm Password"
@@ -279,7 +262,7 @@ export const RegisterForm: React.FC = () => {
         control={<Checkbox checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} size="small" />}
         label={
           <Box component="span" sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1.5 }}>
-            I verify that I am an authorized representative of this medical clinic branch, and I accept the terms of service and patient privacy disclosures.
+            I accept the terms of service and patient privacy disclosures.
           </Box>
         }
         sx={{ alignItems: 'flex-start', '& .MuiFormControlLabel-label': { pt: 0.5 } }}
@@ -293,7 +276,7 @@ export const RegisterForm: React.FC = () => {
         disabled={loading}
         sx={{ mt: 1, py: 1.5, fontWeight: 800 }}
       >
-        {loading ? <CircularProgress size={22} color="inherit" /> : 'Provision SaaS Workspace'}
+        {loading ? <CircularProgress size={22} color="inherit" /> : 'Create Patient Account'}
       </Button>
     </Box>
   );
