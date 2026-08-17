@@ -1,32 +1,45 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth, requireRole } from '@/lib/apiAuth';
+
+type AppointmentRecord = {
+  id: string;
+  clinicId: string;
+  patientId: string;
+  doctorId: string;
+  dateTime: Date;
+  reasonForVisit: string | null;
+  status: string;
+  patient?: { name: string } | null;
+  doctor?: { name: string } | null;
+};
 
 export async function GET(request: Request) {
+  const auth = requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+  const { session } = auth;
+
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const role = searchParams.get('role');
-    const clinicId = searchParams.get('clinicId') || 'clinic-1';
+    const clinicId = searchParams.get('clinicId');
 
-    if (!role) {
-      return NextResponse.json({ error: 'Role is required' }, { status: 400 });
+    if (!clinicId) {
+      return NextResponse.json({ error: 'clinicId is required' }, { status: 400 });
     }
 
-    let appointments;
+    let appointments: AppointmentRecord[];
 
-    if (role === 'PATIENT' && userId) {
-      // Find patient record
-      const patient = await prisma.patient.findUnique({ where: { userId } });
+    if (session.role === 'PATIENT') {
+      const patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
       if (!patient) return NextResponse.json([]);
-      
+
       appointments = await prisma.appointment.findMany({
         where: { patientId: patient.id, clinicId },
         include: { doctor: true },
         orderBy: { dateTime: 'asc' },
       });
-    } else if (role === 'DOCTOR' && userId) {
-      // Find doctor record
-      const doctor = await prisma.doctor.findUnique({ where: { userId } });
+    } else if (session.role === 'DOCTOR') {
+      const doctor = await prisma.doctor.findUnique({ where: { userId: session.userId } });
       if (!doctor) return NextResponse.json([]);
 
       appointments = await prisma.appointment.findMany({
@@ -35,7 +48,7 @@ export async function GET(request: Request) {
         orderBy: { dateTime: 'asc' },
       });
     } else {
-      // Receptionist/Admin: Get all scheduled appointments
+      // Receptionist / Admin: Get all scheduled appointments for their clinic
       appointments = await prisma.appointment.findMany({
         where: { clinicId },
         include: { patient: true, doctor: true },
@@ -44,7 +57,7 @@ export async function GET(request: Request) {
     }
 
     // Format appointments to match frontend interface
-    const formatted = appointments.map((appt: any) => ({
+    const formatted = appointments.map((appt) => ({
       id: appt.id,
       clinicId: appt.clinicId,
       patientId: appt.patientId,
@@ -57,32 +70,35 @@ export async function GET(request: Request) {
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching appointments:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
+  const auth = requireRole(request, ['PATIENT', 'RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN']);
+  if (auth instanceof NextResponse) return auth;
+  const { session } = auth;
+
   try {
     const body = await request.json();
-    const { patientId, doctorId, dateTime, reason, clinicId } = body;
+    const { doctorId, dateTime, reason, clinicId } = body;
 
-    if (!patientId || !doctorId || !dateTime || !reason) {
+    if (!doctorId || !dateTime || !reason) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    // Resolve patient
-    let actualPatientId = patientId;
-    if (patientId.startsWith('auth-')) {
-      const patient = await prisma.patient.findUnique({ where: { userId: patientId } });
-      if (patient) actualPatientId = patient.id;
+    // Resolve the patient from the session (never trust a client-supplied patientId)
+    const patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
+    if (!patient) {
+      return NextResponse.json({ error: 'Patient profile not found' }, { status: 404 });
     }
 
     const appt = await prisma.appointment.create({
       data: {
-        clinicId: clinicId || 'clinic-1',
-        patientId: actualPatientId,
+        clinicId: clinicId || patient.clinicId,
+        patientId: patient.id,
         doctorId,
         dateTime: new Date(dateTime),
         reasonForVisit: reason,
@@ -97,21 +113,25 @@ export async function POST(request: Request) {
       id: appt.id,
       clinicId: appt.clinicId,
       patientId: appt.patientId,
-      patientName: 'Self', // Will resolve on context load
+      patientName: 'Self',
       doctorId: appt.doctorId,
       doctorName: appt.doctor.name,
       dateTime: appt.dateTime.toISOString(),
       reason: appt.reasonForVisit,
       status: appt.status,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating appointment:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
 // Handles cancellation
 export async function PATCH(request: Request) {
+  const auth = requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+  const { session } = auth;
+
   try {
     const body = await request.json();
     const { appointmentId, status } = body;
@@ -120,14 +140,27 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Missing appointmentId or status' }, { status: 400 });
     }
 
+    const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+    if (!appointment) {
+      return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+    }
+
+    // Patients may only cancel their own appointments
+    if (session.role === 'PATIENT') {
+      const patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
+      if (!patient || patient.id !== appointment.patientId) {
+        return NextResponse.json({ error: 'You can only cancel your own appointment' }, { status: 403 });
+      }
+    }
+
     const updated = await prisma.appointment.update({
       where: { id: appointmentId },
       data: { status },
     });
 
     return NextResponse.json(updated);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating appointment:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

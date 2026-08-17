@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireRole } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
+  const auth = requireRole(request, ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN']);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const { 
@@ -79,6 +83,18 @@ export async function POST(request: Request) {
         });
       }
 
+      // Track analytics event
+      try {
+        const { AnalyticsService } = await import('@/lib/analyticsService');
+        await AnalyticsService.trackEvent(updated.clinicId, 'PATIENT_CALLED', {
+          tokenId: updated.id,
+          doctorId: updated.doctorId,
+          tokenNumber: updated.tokenNumber
+        });
+      } catch (err) {
+        console.error('Error tracking analytics event:', err);
+      }
+
       return NextResponse.json({ success: true, calledToken: updated });
     }
 
@@ -116,6 +132,18 @@ export async function POST(request: Request) {
 
       // 3. Trigger auto-call next patient for this doctor
       const nextCalledToken = await callNextDoctorToken(token.doctorId);
+
+      // Track analytics event
+      try {
+        const { AnalyticsService } = await import('@/lib/analyticsService');
+        await AnalyticsService.trackEvent(token.clinicId, 'VISIT_COMPLETED', {
+          tokenId: token.id,
+          doctorId: token.doctorId,
+          patientId: token.patientId
+        });
+      } catch (err) {
+        console.error('Error tracking analytics event:', err);
+      }
 
       return NextResponse.json({ success: true, nextCalledToken });
     }
@@ -234,10 +262,177 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
+    // --- Action 10: Call Previous Patient ---
+    if (action === 'call-previous') {
+      if (!doctorId) return NextResponse.json({ error: 'Doctor ID is required' }, { status: 400 });
+
+      // 1. Find the current active token (CALLED or IN_CONSULTATION)
+      const currentActive = await prisma.queueToken.findFirst({
+        where: {
+          doctorId,
+          status: { in: ['CALLED', 'IN_CONSULTATION'] },
+        },
+      });
+
+      // 2. Find the last completed or skipped token for this doctor
+      const previousToken = await prisma.queueToken.findFirst({
+        where: {
+          doctorId,
+          status: { in: ['COMPLETED', 'SKIPPED'] },
+        },
+        orderBy: { updatedAt: 'desc' },
+      });
+
+      if (!previousToken) {
+        return NextResponse.json({ error: 'No previous patient token found in logs' }, { status: 404 });
+      }
+
+      // 3. Put current active back to WAITING (at the front of the queue)
+      if (currentActive) {
+        await prisma.queueToken.update({
+          where: { id: currentActive.id },
+          data: {
+            status: 'WAITING',
+            priority: 900, // keep at the front of the line
+          },
+        });
+      }
+
+      // 4. Restore previous token to CALLED status
+      const restored = await prisma.queueToken.update({
+        where: { id: previousToken.id },
+        data: {
+          status: 'CALLED',
+          completedAt: null,
+        },
+      });
+
+      // Log Queue Event
+      await prisma.queueEvent.create({
+        data: {
+          clinicId: restored.clinicId,
+          eventType: 'RECALLED',
+          tokenId: restored.id,
+          payload: JSON.stringify({ restoredTokenId: restored.id, demotedTokenId: currentActive?.id }),
+        },
+      });
+
+      return NextResponse.json({ success: true, calledToken: restored });
+    }
+
+    // --- Action 11: Transfer Patient to another Doctor ---
+    if (action === 'transfer') {
+      const { targetDoctorId, performedBy } = body;
+      if (!tokenId || !targetDoctorId) {
+        return NextResponse.json({ error: 'Missing tokenId or targetDoctorId' }, { status: 400 });
+      }
+
+      const token = await prisma.queueToken.findUnique({
+        where: { id: tokenId },
+        include: { doctor: true },
+      });
+
+      if (!token) return NextResponse.json({ error: 'Token not found' }, { status: 404 });
+
+      // Update token's doctor ID and calculate new wait time
+      const targetDoctor = await prisma.doctor.findUnique({ where: { id: targetDoctorId } });
+      if (!targetDoctor) return NextResponse.json({ error: 'Target doctor not found' }, { status: 404 });
+
+      const activeCount = await prisma.queueToken.count({
+        where: {
+          doctorId: targetDoctorId,
+          status: 'WAITING',
+        },
+      });
+
+      const newEstimatedWait = activeCount * (targetDoctor.averageConsultationTime || 12);
+
+      const updated = await prisma.queueToken.update({
+        where: { id: tokenId },
+        data: {
+          doctorId: targetDoctorId,
+          estimatedWait: newEstimatedWait,
+          status: 'WAITING', // put back in waiting list for the new doctor
+        },
+      });
+
+      // Log transfer history
+      await prisma.queueTransferHistory.create({
+        data: {
+          tokenId,
+          fromDoctorId: token.doctorId,
+          toDoctorId: targetDoctorId,
+          performedBy: performedBy || 'unknown',
+        },
+      });
+
+      // Log Event
+      await prisma.queueEvent.create({
+        data: {
+          clinicId: token.clinicId,
+          eventType: 'TRANSFERRED',
+          tokenId,
+          payload: JSON.stringify({ fromDoctorId: token.doctorId, toDoctorId: targetDoctorId }),
+        },
+      });
+
+      // Log Audit Log
+      await prisma.auditLog.create({
+        data: {
+          clinicId: token.clinicId,
+          userId: performedBy || 'unknown',
+          userRole: 'RECEPTIONIST',
+          action: 'TRANSFER_PATIENT',
+          details: `Patient token ${token.tokenNumber} transferred from Dr ${token.doctor.name} to Dr ${targetDoctor.name}`,
+        },
+      });
+
+      return NextResponse.json(updated);
+    }
+
+    // --- Action 12: Cancel Patient Token ---
+    if (action === 'cancel') {
+      const { performedBy } = body;
+      if (!tokenId) return NextResponse.json({ error: 'Token ID is required' }, { status: 400 });
+
+      const token = await prisma.queueToken.findUnique({ where: { id: tokenId } });
+      if (!token) return NextResponse.json({ error: 'Token not found' }, { status: 404 });
+
+      const updated = await prisma.queueToken.update({
+        where: { id: tokenId },
+        data: {
+          status: 'CANCELLED',
+        },
+      });
+
+      // Log Event
+      await prisma.queueEvent.create({
+        data: {
+          clinicId: token.clinicId,
+          eventType: 'CANCELLED',
+          tokenId,
+          payload: JSON.stringify({ reason: 'Cancelled by staff / patient' }),
+        },
+      });
+
+      // Log Audit Log
+      await prisma.auditLog.create({
+        data: {
+          clinicId: token.clinicId,
+          userId: performedBy || 'staff-id',
+          userRole: 'RECEPTIONIST',
+          action: 'CANCEL_QUEUE_TOKEN',
+          details: `Token: ${token.tokenNumber} was cancelled by staff`,
+        },
+      });
+
+      return NextResponse.json(updated);
+    }
+
     return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error executing queue action:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 

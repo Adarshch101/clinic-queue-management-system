@@ -28,6 +28,8 @@ enum TokenStatus {
   COMPLETED
   SKIPPED
   RECALLED
+  CANCELLED
+  NO_SHOW
 }
 
 enum SubscriptionTier {
@@ -43,6 +45,14 @@ model Clinic {
   subdomain       String           @unique
   logoUrl         String?
   primaryColor    String           @default("#3b82f6")
+  status          String           @default("PENDING")
+  ownerName       String?
+  phone           String?
+  email           String?
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   
@@ -56,7 +66,31 @@ model Clinic {
   holidays        Holiday[]
   subscriptions   Subscription[]
   auditLogs       AuditLog[]
+  admins          ClinicAdmin[]
+  profile         ClinicProfile?
+  documents       ClinicDocument[]
+  settings        ClinicSettings?
+  verificationRequests VerificationRequest[]
+
+  @@index([name])
+  @@index([status])
+  @@index([email])
 }
+
+model ClinicAdmin {
+  id              String           @id @default(uuid())
+  clinicId        String
+  userId          String           @unique // Linked to Supabase Auth ID
+  name            String
+  email           String
+  phone           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  clinic          Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+}
+
 
 model Doctor {
   id              String           @id @default(uuid())
@@ -69,6 +103,14 @@ model Doctor {
   roomNumber      String
   isActive        String           @default("true")
   averageConsultationTime Int      @default(10)
+  qualification   String?
+  experience      Int?
+  registrationNumber String?
+  avatarUrl       String?
+  languages       String?
+  bio             String?
+  consultationFee Float?
+  consultationDuration Int?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -155,6 +197,10 @@ model QueueToken {
   appointment     Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   patient         Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
   doctor          Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([tokenNumber])
+  @@index([status])
+  @@index([doctorId])
 }
 
 model Visit {
@@ -252,3 +298,302 @@ model Permission {
   resource        String       // e.g., "APPOINTMENTS", "QUEUE", "BILLING"
   action          String       // e.g., "CREATE", "READ", "UPDATE", "DELETE"
 }
+
+model ClinicProfile {
+  id                String       @id @default(uuid())
+  clinicId          String       @unique
+  legalBusinessName String?
+  bannerUrl         String?
+  tagline           String?
+  description       String?
+  establishedYear   Int?
+  clinicType        String?
+  country           String?
+  landmark          String?
+  latitude          Float?
+  longitude         Float?
+  googleMapsUrl     String?
+  services          String?      // Comma-separated list or JSON string of selected services
+  whatsappNumber    String?
+  emergencyPhone    String?
+  supportEmail      String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // Relations
+  clinic            Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+}
+
+model ClinicDocument {
+  id              String       @id @default(uuid())
+  clinicId        String
+  fileName        String
+  fileUrl         String
+  fileType        String       // PDF, JPG, PNG etc.
+  documentType    String       // MEDICAL_LICENSE, IDENTITY_PROOF, CLINIC_REGISTRATION etc.
+  uploadedAt      DateTime     @default(now())
+
+  // Relations
+  clinic          Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+}
+
+model ClinicSettings {
+  id                     String       @id @default(uuid())
+  clinicId               String       @unique
+  queueEnabled           Boolean      @default(true)
+  appointmentsEnabled    Boolean      @default(true)
+  walkInPatients         Boolean      @default(true)
+  emergencyQueue         Boolean      @default(true)
+  tokenPrefix            String       @default("T")
+  maxDailyTokens         Int          @default(100)
+  onlineQueueVisibility  Boolean      @default(true)
+  publicProfileVisibility Boolean      @default(true)
+  notificationPreferences String      @default("EMAIL")
+  timezone               String       @default("UTC")
+  language               String       @default("en")
+  maxQueueSize           Int          @default(50)
+  slotDuration           Int          @default(15)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  // Relations
+  clinic                 Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+}
+
+model VerificationRequest {
+  id              String       @id @default(uuid())
+  clinicId        String
+  submittedAt     DateTime     @default(now())
+  status          String       // PENDING_REVIEW, APPROVED, REJECTED, REQUEST_CHANGES
+  rejectionReason String?
+  notes           String?
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  clinic          Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  history         VerificationHistory[]
+
+  @@index([status])
+}
+
+model VerificationHistory {
+  id              String       @id @default(uuid())
+  requestId       String
+  action          String       // SUBMIT, APPROVE, REJECT, REQUEST_CHANGES
+  performedBy     String       // userId of admin
+  performedByRole String
+  notes           String?
+  createdAt       DateTime     @default(now())
+
+  // Relations
+  request         VerificationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model QueueEvent {
+  id          String   @id @default(uuid())
+  clinicId    String
+  eventType   String   // TOKEN_GENERATED, CALLED, IN_CONSULTATION, COMPLETED, CANCELLED, TRANSFERRED, PAUSED
+  tokenId     String?
+  payload     String   // JSON string details
+  createdAt   DateTime @default(now())
+}
+
+model QueueTransferHistory {
+  id             String   @id @default(uuid())
+  tokenId        String
+  fromDoctorId   String
+  toDoctorId     String
+  performedBy    String
+  createdAt      DateTime @default(now())
+}
+
+model PlatformSettings {
+  id            String   @id @default(uuid())
+  platformName  String   @default("Q-Clinix")
+  brandingColor String   @default("#3b82f6")
+  supportEmail  String   @default("support@qclinix.com")
+  supportPhone  String   @default("+1-800-555-0199")
+  timezone      String   @default("UTC")
+  maintenance   Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  isEnabled   Boolean  @default(true)
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  target    String   // ALL, CLINICS, PATIENTS
+  status    String   // DRAFT, PUBLISHED, ARCHIVED
+  createdAt DateTime @default(now())
+}
+
+model NotificationTemplate {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  subject   String?
+  body      String   // Template with placeholders
+  channel   String   // EMAIL, SMS, WHATSAPP, IN_APP
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationPreference {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  emailEnabled    Boolean  @default(true)
+  smsEnabled      Boolean  @default(false)
+  whatsappEnabled Boolean  @default(false)
+  browserEnabled  Boolean  @default(true)
+  pushEnabled     Boolean  @default(false)
+  quietHoursStart String?  // e.g., "22:00"
+  quietHoursEnd   String?  // e.g., "08:00"
+  updatedAt       DateTime @updatedAt
+}
+
+model NotificationEvent {
+  id        String   @id @default(uuid())
+  eventType String
+  payload   String   // JSON string details
+  processed Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model DeliveryLog {
+  id          String   @id @default(uuid())
+  recipientId String
+  channel     String   // EMAIL, SMS, WHATSAPP, IN_APP, BROWSER
+  templateId  String?
+  sentTime    DateTime @default(now())
+  status      String   // SENT, FAILED, RETRYING
+  readStatus  Boolean  @default(false)
+  retryCount  Int      @default(0)
+  failureReason String?
+}
+
+model ScheduledNotification {
+  id         String   @id @default(uuid())
+  recipientId String
+  title      String
+  body       String
+  channel    String
+  sendAt     DateTime
+  sent       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  clinicId  String?
+  eventType String
+  payload   String
+  timestamp DateTime @default(now())
+}
+
+model AnalyticsSummary {
+  id        String   @id @default(uuid())
+  clinicId  String?
+  metricKey String
+  value     Float
+  period    String
+  date      DateTime
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  name        String
+  type        String
+  clinicId    String?
+  filters     String
+  fileUrl     String?
+  generatedBy String
+  createdAt   DateTime @default(now())
+}
+
+model ScheduledReport {
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+  clinicId  String?
+  frequency String
+  email     String
+  filters   String?
+  createdAt DateTime @default(now())
+}
+
+model DashboardLayout {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  layout    String
+  updatedAt DateTime @updatedAt
+}
+
+model WidgetPreference {
+  id        String   @id @default(uuid())
+  userId    String
+  widgetId  String
+  visible   Boolean  @default(true)
+  favorite  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, widgetId])
+}
+
+model UserPreference {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  theme           String   @default("light") // light, dark
+  language        String   @default("en")
+  timeFormat      String   @default("12h")    // 12h, 24h
+  dateFormat      String   @default("MM/DD/YYYY")
+  accessibility   Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+}
+
+model IntegrationConfig {
+  id        String   @id @default(uuid())
+  name      String   @unique // SMTP, TWILIO, WHATSAPP, GOOGLE_MAPS, S3
+  provider  String
+  endpoint  String?
+  status    String   // ACTIVE, INACTIVE, ERROR
+  updatedAt DateTime @updatedAt
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  name      String   @unique // GOOGLE_MAPS_KEY, SMTP_PASS, TWILIO_SID, TWILIO_TOKEN
+  value     String   // Obfuscated string values
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BackupJob {
+  id        String   @id @default(uuid())
+  filename  String
+  size      Int
+  status    String   // COMPLETED, FAILED, RUNNING
+  createdAt DateTime @default(now())
+}
+
+model ConfigurationHistory {
+  id        String   @id @default(uuid())
+  settingKey String
+  oldValue  String?
+  newValue  String?
+  changedBy String
+  changedAt DateTime @default(now())
+  reason    String?
+}
+
+
+
+
+
+

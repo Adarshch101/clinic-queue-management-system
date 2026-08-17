@@ -10,14 +10,45 @@ import {
   Visit,
   MedicalReport,
   Notification,
-  MOCK_CLINICS,
-  MOCK_DOCTORS,
-  INITIAL_PATIENTS,
-  MOCK_NOTIFICATIONS,
-  AI_PREDICTIONS,
 } from '../lib/mockData';
 import { supabase } from '../lib/supabaseClient';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import confetti from 'canvas-confetti';
+import { useAuth } from '@/features/auth/context/AuthContext';
+
+interface CurrentUserInfo {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}
+
+interface ClinicSearchDto {
+  id: string;
+  name: string;
+  subdomain: string;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  doctors?: DoctorSearchDto[];
+}
+
+interface DoctorSearchDto {
+  id: string;
+  name: string;
+  specialization?: string | null;
+  roomNumber?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
+  averageConsultationTime?: number | null;
+  isActive?: string | boolean;
+}
 
 interface AppContextType {
   clinics: Clinic[];
@@ -29,17 +60,16 @@ interface AppContextType {
   reports: MedicalReport[];
   notifications: Notification[];
   
-  currentClinic: Clinic;
+  currentClinic: Clinic | null;
   setClinicById: (id: string) => void;
-  currentRole: 'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN';
-  setCurrentRole: (role: 'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN') => void;
-  currentUser: { id: string; name: string; email: string; avatar?: string } | null;
-  setCurrentUserById: (id: string) => void;
+  currentRole: 'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN';
+  setCurrentRole: (role: 'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN') => void;
+  currentUser: CurrentUserInfo | null;
   
   // Patient actions
   bookAppointment: (doctorId: string, reason: string, dateTime: string) => Promise<Appointment>;
   checkInAppointment: (appointmentId: string) => Promise<QueueToken>;
-  uploadReport: (fileName: string, reportType: string, fileType: 'pdf' | 'image') => Promise<void>;
+  uploadReport: (file: File, reportType: string, fileType: 'pdf' | 'image') => Promise<void>;
   
   // Receptionist actions
   registerWalkIn: (name: string, age: number, gender: string, phone: string, doctorId: string, reason: string) => Promise<QueueToken>;
@@ -57,44 +87,143 @@ interface AppContextType {
   pauseQueue: (doctorId: string) => Promise<void>;
   resumeQueue: (doctorId: string) => Promise<void>;
   addDelay: (doctorId: string, mins: number) => Promise<void>;
+  callPrevious: (doctorId: string) => Promise<void>;
+  transferPatient: (tokenId: string, targetDoctorId: string) => Promise<void>;
+  cancelPatientToken: (tokenId: string) => Promise<void>;
 
   // Global actions
   theme: 'light' | 'dark';
   toggleTheme: () => void;
-  aiPredictions: typeof AI_PREDICTIONS;
   triggerVoiceAnnouncement: (text: string) => void;
   fetchQueueData: () => Promise<void>;
+  markNotifAsRead: (notificationId: string) => Promise<void>;
+  markAllNotifsAsRead: () => Promise<void>;
+  deleteNotif: (notificationId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Database States loaded from APIs
-  const [clinics, setClinics] = useState<Clinic[]>(MOCK_CLINICS);
-  const [doctors, setDoctors] = useState<Doctor[]>(MOCK_DOCTORS);
-  const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
+  // Database States loaded from APIs — all start empty
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [patients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [queueTokens, setQueueTokens] = useState<QueueToken[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [reports, setReports] = useState<MedicalReport[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // App Level configurations
-  const [currentClinic, setCurrentClinic] = useState<Clinic>(MOCK_CLINICS[0]);
-  const [currentRole, setCurrentRole] = useState<'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN'>('PATIENT');
-  const [currentUser, setCurrentUser] = useState<any>({
-    id: 'pat-1',
-    name: 'Alex Harrison',
-    email: 'alex.harrison@gmail.com',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
-  });
+  const { profile, tempSessionId } = useAuth();
+
+  // App Level configurations — null until loaded from DB
+  const [currentClinic, setCurrentClinic] = useState<Clinic | null>(null);
+  const [currentRole, setCurrentRole] = useState<'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN'>('PATIENT');
+  const [currentUser, setCurrentUser] = useState<CurrentUserInfo | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  // Synchronize dynamic session details from auth profile
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (profile) {
+        setCurrentRole(profile.role);
+        setCurrentUser({
+          id: profile.userId,
+          name: profile.name,
+          email: profile.email,
+        });
+        if (profile.clinicId) {
+          const matchingClinic = clinics.find(c => c.id === profile.clinicId);
+          if (matchingClinic) {
+            setCurrentClinic(matchingClinic);
+          }
+        }
+      } else if (tempSessionId) {
+        setCurrentRole('PATIENT');
+        setCurrentUser({
+          id: tempSessionId,
+          name: 'Anonymous Patient',
+          email: '',
+        });
+      }
+    }, 0);
+    return () => clearTimeout(id);
+  }, [profile, tempSessionId, clinics]);
+
+  // --- Fetch clinics and doctors from the database on mount ---
+  const fetchClinicsAndDoctors = useCallback(async () => {
+    try {
+      // Fetch all clinics the user has access to
+      const clinicsRes = await fetch('/api/clinics/search?query=');
+      if (clinicsRes.ok) {
+        const data = (await clinicsRes.json()) as ClinicSearchDto[];
+        // Map DB format to the app Clinic interface
+        const mappedClinics: Clinic[] = data.map((c) => ({
+          id: c.id,
+          name: c.name,
+          subdomain: c.subdomain,
+          logo: c.logoUrl || '🏥',
+          primaryColor: c.primaryColor || '#3b82f6',
+          address: c.address || '',
+          phone: c.phone || '',
+          email: c.email || '',
+          city: c.city || undefined,
+          state: c.state || undefined,
+          pincode: c.pincode || undefined,
+        }));
+        setClinics(mappedClinics);
+
+        // Set current clinic from profile or first available
+        if (profile?.clinicId) {
+          const match = mappedClinics.find((c: Clinic) => c.id === profile.clinicId);
+          if (match) setCurrentClinic(match);
+        } else if (mappedClinics.length > 0 && !currentClinic) {
+          setCurrentClinic(mappedClinics[0]);
+        }
+
+        // Collect all doctors from the fetched clinic data
+        const allDoctors: Doctor[] = [];
+        data.forEach((c) => {
+          if (c.doctors) {
+            c.doctors.forEach((d) => {
+              allDoctors.push({
+                id: d.id,
+                clinicId: c.id,
+                name: d.name,
+                specialization: d.specialization || '',
+                roomNumber: d.roomNumber || '',
+                email: d.email || '',
+                phone: d.phone || '',
+                avatar: d.avatarUrl || '',
+                workingHours: '',
+                averageConsultationTime: d.averageConsultationTime || 10,
+                isActive: d.isActive === undefined ? undefined : String(d.isActive),
+              });
+            });
+          }
+        });
+        setDoctors(allDoctors);
+      }
+    } catch (e) {
+      console.error('Error fetching clinics and doctors:', e);
+    }
+  }, [profile?.clinicId]);
+
+  useEffect(() => {
+    const id = setTimeout(() => fetchClinicsAndDoctors(), 0);
+    return () => clearTimeout(id);
+  }, [fetchClinicsAndDoctors]);
+
 
   // --- CORE REFETCH UTILITIES ---
 
+  const currentClinicId = currentClinic?.id;
+  const currentUserId = currentUser?.id;
+
   const fetchQueueData = useCallback(async () => {
+    if (!currentClinicId) return;
     try {
-      const res = await fetch(`/api/queue?clinicId=${currentClinic.id}`);
+      const res = await fetch(`/api/queue?clinicId=${currentClinicId}`);
       if (res.ok) {
         const data = await res.json();
         setQueueTokens(data);
@@ -102,13 +231,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.error('Error fetching live queue data:', e);
     }
-  }, [currentClinic.id]);
+  }, [currentClinicId]);
+
+  const fetchUserNotifications = useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      const res = await fetch(`/api/notifications?userId=${currentUserId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = data.map((n: Notification & { sentAt?: string }) => ({
+          ...n,
+          time: n.sentAt ? new Date(n.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        }));
+        setNotifications(mapped);
+      }
+    } catch (e) {
+      console.error('Error fetching notifications:', e);
+    }
+  }, [currentUserId]);
 
   const fetchUserData = useCallback(async () => {
-    if (!currentUser?.id) return;
+    if (!currentUserId || !currentClinicId) return;
     try {
       // 1. Fetch appointments
-      const apptRes = await fetch(`/api/appointments?role=${currentRole}&userId=${currentUser.id}&clinicId=${currentClinic.id}`);
+      const apptRes = await fetch(`/api/appointments?role=${currentRole}&userId=${currentUserId}&clinicId=${currentClinicId}`);
       if (apptRes.ok) {
         const appts = await apptRes.json();
         setAppointments(appts);
@@ -116,13 +262,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // 2. Fetch reports (if patient)
       if (currentRole === 'PATIENT') {
-        const repRes = await fetch(`/api/reports?userId=${currentUser.id}`);
+        const repRes = await fetch(`/api/reports?userId=${currentUserId}`);
         if (repRes.ok) {
           const reps = await repRes.json();
           setReports(reps);
         }
 
-        const visRes = await fetch(`/api/visits?userId=${currentUser.id}`);
+        const visRes = await fetch(`/api/visits?userId=${currentUserId}`);
         if (visRes.ok) {
           const viss = await visRes.json();
           setVisits(viss);
@@ -131,17 +277,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.error('Error fetching user relative data:', e);
     }
-  }, [currentUser?.id, currentRole, currentClinic.id]);
+  }, [currentUserId, currentRole, currentClinicId]);
 
-  // Load initial clinic setup and doctors list
+  // Load initial clinic setup — sync user profile to DB
   useEffect(() => {
-    // If databases are not seeded, sync syncs them on startup
+    if (!currentUser?.id) return;
     const runProfileSync = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
         await fetch(`/api/auth/sync`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: currentUser?.id || 'pat-1', name: currentUser?.name, email: currentUser?.email, role: currentRole }),
+          body: JSON.stringify({
+            userId: currentUser.id,
+            name: currentUser.name,
+            email: currentUser.email,
+            role: currentRole,
+            accessToken: session?.access_token,
+          }),
         });
         fetchQueueData();
       } catch (err) {
@@ -149,92 +302,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
     runProfileSync();
-  }, [currentUser?.id, currentClinic.id, currentRole, fetchQueueData]);
+  }, [currentUser?.id, currentClinic?.id, currentRole, fetchQueueData]);
 
   // Refetch when user context changes
   useEffect(() => {
-    fetchUserData();
-  }, [currentUser?.id, currentRole, currentClinic.id, fetchUserData]);
-
-  // Real-time Database subscription to QueueToken table via Supabase channels
-  useEffect(() => {
-    const queueChannel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'QueueToken',
-        },
-        (payload: any) => {
-          console.log('Realtime QueueToken table updated:', payload);
-          fetchQueueData();
-
-          // Check if a patient was called, to trigger Text-To-Speech announcement locally
-          if (payload.eventType === 'UPDATE' && payload.new.status === 'CALLED' && payload.old.status !== 'CALLED') {
-            const tk = payload.new;
-            const doc = MOCK_DOCTORS.find(d => d.id === tk.doctorId);
-            const text = `Ticket number ${tk.tokenNumber}, please proceed to ${doc?.roomNumber || 'Room 101'}.`;
-            triggerVoiceAnnouncement(text);
-
-            addNotification(
-              'It is Your Turn!',
-              `Ticket ${tk.tokenNumber}: Please proceed to ${doc?.roomNumber || 'Room 101'} with ${doc?.name || 'Physician'}.`,
-              'PUSH'
-            );
-          }
-        }
-      )
-      .subscribe();
-
-    // Dark/Light configuration
-    const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-
-    return () => {
-      supabase.removeChannel(queueChannel);
-    };
-  }, [theme, fetchQueueData]);
-
-  // Clinic Tenant Selector
-  const setClinicById = (id: string) => {
-    const target = clinics.find(c => c.id === id);
-    if (target) {
-      setCurrentClinic(target);
-      if (currentRole === 'DOCTOR') {
-        const docInClinic = doctors.find(d => d.clinicId === id);
-        if (docInClinic) setCurrentUserById(docInClinic.id);
-      }
-    }
-  };
-
-  // Role Simulator login bypass
-  const setCurrentUserById = (id: string) => {
-    if (id.startsWith('pat-')) {
-      const p = patients.find(pat => pat.id === id);
-      if (p) {
-        setCurrentUser({ id: p.id, name: p.name, email: p.email || '', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300' });
-      }
-    } else if (id.startsWith('doc-')) {
-      const d = doctors.find(doc => doc.id === id);
-      if (d) {
-        setCurrentUser({ id: d.id, name: d.name, email: d.email, avatar: d.avatar });
-      }
-    } else if (id === 'receptionist') {
-      setCurrentUser({ id: 'receptionist-id', name: 'Jane Miller', email: 'jane.m@clinic.com' });
-    } else if (id === 'admin') {
-      setCurrentUser({ id: 'admin-id', name: 'Dr. Gregory House', email: 'director@clinic.com' });
-    }
-  };
-
-  const toggleTheme = () => {
-    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
-  };
+    const id = setTimeout(() => {
+      fetchUserData();
+      fetchUserNotifications();
+    }, 0);
+    return () => clearTimeout(id);
+  }, [currentUser?.id, currentRole, currentClinic?.id, fetchUserData, fetchUserNotifications]);
 
   const triggerVoiceAnnouncement = (text: string) => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -260,6 +337,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications(prev => [newNotif, ...prev]);
   };
 
+  // Real-time Database subscription to QueueToken table via Supabase channels
+  useEffect(() => {
+    const queueChannel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'QueueToken',
+        },
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+          console.log('Realtime QueueToken table updated:', payload);
+          fetchQueueData();
+
+          // Check if a patient was called, to trigger Text-To-Speech announcement locally
+          if (payload.eventType === 'UPDATE' && payload.new.status === 'CALLED' && payload.old.status !== 'CALLED') {
+            const tk = payload.new;
+            const doc = doctors.find(d => d.id === tk.doctorId);
+            const text = `Ticket number ${tk.tokenNumber}, please proceed to ${doc?.roomNumber || 'Room 101'}.`;
+            triggerVoiceAnnouncement(text);
+
+            addNotification(
+              'It is Your Turn!',
+              `Ticket ${tk.tokenNumber}: Please proceed to ${doc?.roomNumber || 'Room 101'} with ${doc?.name || 'Physician'}.`,
+              'PUSH'
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    // Dark/Light configuration
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+
+    return () => {
+      supabase.removeChannel(queueChannel);
+    };
+  }, [theme, fetchQueueData, doctors]);
+
+  // Clinic Tenant Selector
+  const setClinicById = (id: string) => {
+    const target = clinics.find(c => c.id === id);
+    if (target) {
+      setCurrentClinic(target);
+    }
+  };
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+  };
+
   // --- ACTIONS WITH BACKEND API ROUTE HANDLERS ---
 
   // Patient: Book appointment
@@ -272,7 +406,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         doctorId,
         dateTime,
         reason,
-        clinicId: currentClinic.id,
+        clinicId: currentClinic?.id,
       }),
     });
 
@@ -293,7 +427,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         appointmentId,
-        clinicId: currentClinic.id,
+        clinicId: currentClinic?.id,
       }),
     });
 
@@ -307,32 +441,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchUserData();
 
     // Celebration
-    confetti({
-      particleCount: 80,
-      spread: 60,
-      origin: { y: 0.8 },
-      colors: [currentClinic.primaryColor, '#10b981', '#34d399'],
-    });
+    if (currentClinic) {
+      confetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.8 },
+        colors: [currentClinic.primaryColor, '#10b981', '#34d399'],
+      });
+    }
 
     return token;
   };
 
   // Patient: upload report
-  const uploadReport = async (fileName: string, reportType: string, fileType: 'pdf' | 'image') => {
+  const uploadReport = async (file: File, reportType: string, fileType: 'pdf' | 'image') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', currentUser?.id || '');
+    formData.append('reportType', reportType);
+    formData.append('fileType', fileType);
+
     const res = await fetch('/api/reports', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: currentUser?.id,
-        fileName,
-        fileType,
-        reportType,
-      }),
+      body: formData,
     });
 
     if (res.ok) {
       fetchUserData();
-      addNotification('Report Uploaded', `Your report ${fileName} was shared with your doctor.`, 'PUSH');
+      addNotification('Report Uploaded', `Your report ${file.name} was shared with your doctor.`, 'PUSH');
     }
   };
 
@@ -348,7 +484,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         phone,
         doctorId,
         reason,
-        clinicId: currentClinic.id,
+        clinicId: currentClinic?.id,
       }),
     });
 
@@ -576,6 +712,101 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const callPrevious = async (doctorId: string) => {
+    const res = await fetch('/api/queue/actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'call-previous',
+        doctorId,
+      }),
+    });
+
+    if (res.ok) {
+      fetchQueueData();
+      addNotification('Queue Restored', 'Called previous patient.', 'PUSH');
+    }
+  };
+
+  const transferPatient = async (tokenId: string, targetDoctorId: string) => {
+    const res = await fetch('/api/queue/actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'transfer',
+        tokenId,
+        targetDoctorId,
+        performedBy: currentUser?.id,
+      }),
+    });
+
+    if (res.ok) {
+      fetchQueueData();
+      addNotification('Patient Transferred', 'Waiting list updated.', 'PUSH');
+    }
+  };
+
+  const cancelPatientToken = async (tokenId: string) => {
+    const res = await fetch('/api/queue/actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'cancel',
+        tokenId,
+        performedBy: currentUser?.id,
+      }),
+    });
+
+    if (res.ok) {
+      fetchQueueData();
+      addNotification('Token Cancelled', 'Waiting queue updated.', 'PUSH');
+    }
+  };
+
+  const markNotifAsRead = async (notificationId: string) => {
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId }),
+      });
+      if (res.ok) {
+        fetchUserNotifications();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const markAllNotifsAsRead = async () => {
+    if (!currentUser?.id) return;
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.id, markAll: true }),
+      });
+      if (res.ok) {
+        fetchUserNotifications();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteNotif = async (notificationId: string) => {
+    try {
+      const res = await fetch(`/api/notifications?notificationId=${notificationId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        fetchUserNotifications();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       clinics,
@@ -591,7 +822,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentRole,
       setCurrentRole,
       currentUser,
-      setCurrentUserById,
       bookAppointment,
       checkInAppointment,
       uploadReport,
@@ -608,9 +838,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       pauseQueue,
       resumeQueue,
       addDelay,
+      callPrevious,
+      transferPatient,
+      cancelPatientToken,
+      markNotifAsRead,
+      markAllNotifsAsRead,
+      deleteNotif,
       theme,
       toggleTheme,
-      aiPredictions: AI_PREDICTIONS,
       triggerVoiceAnnouncement,
       fetchQueueData,
     }}>

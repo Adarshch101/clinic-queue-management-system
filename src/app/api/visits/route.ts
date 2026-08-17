@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAuth } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
+  const auth = requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+  const { session } = auth;
+
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const patientId = searchParams.get('patientId');
 
     let resolvedPatientId = patientId;
 
-    if (userId) {
-      const patient = await prisma.patient.findUnique({ where: { userId } });
+    if (session.role === 'PATIENT') {
+      const patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
       if (patient) resolvedPatientId = patient.id;
     }
 
@@ -24,7 +28,7 @@ export async function GET(request: Request) {
       orderBy: { visitDate: 'desc' },
     });
 
-    const formatted = visits.map((v: any) => ({
+    const formatted = visits.map((v) => ({
       id: v.id,
       patientId: v.patientId,
       patientName: v.patient?.name || 'Patient',
@@ -36,8 +40,8 @@ export async function GET(request: Request) {
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching visits:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

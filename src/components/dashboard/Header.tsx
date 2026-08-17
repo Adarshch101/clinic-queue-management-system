@@ -2,22 +2,21 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import { 
+  LayoutDashboard,
   Bell, 
   Sun, 
   Moon, 
   Building, 
   User, 
-  ShieldAlert, 
   LogOut,
   ChevronDown,
   CheckCircle,
   Clock,
   Sparkles,
   ArrowRight,
-  Menu,
-  X
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -27,38 +26,21 @@ export const Header: React.FC = () => {
     currentClinic,
     setClinicById,
     currentRole,
-    setCurrentRole,
     currentUser,
-    setCurrentUserById,
     notifications,
     theme,
     toggleTheme,
   } = useApp();
 
+  const { user, profile, logout } = useAuth();
+  const router = useRouter();
   const pathname = usePathname();
   const isLandingPage = pathname === '/';
 
   const [clinicMenuOpen, setClinicMenuOpen] = useState(false);
-  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const unreadNotifs = notifications.filter(n => !n.isRead).length;
-
-  const handleRoleChange = (role: 'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN') => {
-    setCurrentRole(role);
-    setRoleMenuOpen(false);
-    // Adjust mock user ID based on role
-    if (role === 'PATIENT') {
-      setCurrentUserById('pat-1');
-    } else if (role === 'RECEPTIONIST') {
-      setCurrentUserById('receptionist');
-    } else if (role === 'DOCTOR') {
-      setCurrentUserById('doc-1');
-    } else if (role === 'ADMIN') {
-      setCurrentUserById('admin');
-    }
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md">
@@ -93,43 +75,33 @@ export const Header: React.FC = () => {
         {/* RIGHT SECTION: Dynamic Actions */}
         <div className="flex items-center gap-3 md:gap-4">
           
-          {isLandingPage ? (
-            // --- visitor Mode Buttons ---
+          {/* Role Dashboard Link in Header when Logged In */}
+          {profile?.role && (
+            <Link
+              href={
+                profile.role === 'SUPER_ADMIN' ? '/admin/super-dashboard' :
+                profile.role === 'ADMIN' ? '/admin/dashboard' :
+                profile.role === 'DOCTOR' ? '/doctor/dashboard' :
+                profile.role === 'RECEPTIONIST' ? '/receptionist/dashboard' :
+                '/patient/dashboard'
+              }
+              className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 hover:shadow-md transition flex items-center gap-1.5 shrink-0"
+              title="Navigate to active dashboard"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>
+                {profile.role === 'SUPER_ADMIN' ? 'Super Admin Dashboard' :
+                 profile.role === 'ADMIN' ? 'Clinic Admin Dashboard' :
+                 profile.role === 'DOCTOR' ? 'Doctor Dashboard' :
+                 profile.role === 'RECEPTIONIST' ? 'Receptionist Dashboard' :
+                 'Patient Dashboard'}
+              </span>
+            </Link>
+          )}
+
+          {isLandingPage && !user ? (
+            // --- Visitor Mode Buttons ---
             <>
-              {/* Quick Sandbox Bypass shortcut for testing */}
-              <div className="relative">
-                <button
-                  onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/30 hover:bg-indigo-100/50 transition"
-                >
-                  <ShieldAlert className="w-3.5 h-3.5" /> Sandbox Views
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-
-                {roleMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg py-1.5 ring-1 ring-black/5 animate-slide-up">
-                    <div className="px-3 py-1.5 text-xs font-bold text-amber-500 uppercase tracking-wider flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5" /> Quick Launch
-                    </div>
-                    {[
-                      { r: 'PATIENT', path: '/patient/dashboard', label: 'Patient Dashboard' },
-                      { r: 'RECEPTIONIST', path: '/receptionist/dashboard', label: 'Reception Dashboard' },
-                      { r: 'DOCTOR', path: '/doctor/dashboard', label: 'Doctor Suite' },
-                      { r: 'ADMIN', path: '/admin/dashboard', label: 'Clinic Admin' },
-                    ].map((roleObj) => (
-                      <Link
-                        key={roleObj.r}
-                        href={roleObj.path}
-                        onClick={() => handleRoleChange(roleObj.r as any)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/80 block"
-                      >
-                        {roleObj.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               {/* Login Link */}
               <Link
                 href="/login"
@@ -154,14 +126,13 @@ export const Header: React.FC = () => {
                 <button 
                   onClick={() => {
                     setClinicMenuOpen(!clinicMenuOpen);
-                    setRoleMenuOpen(false);
                     setNotifMenuOpen(false);
                   }}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-850 transition"
                   id="clinic-selector-btn"
                 >
                   <Building className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span className="hidden sm:inline truncate max-w-[120px]">{currentClinic.name}</span>
+                  <span className="hidden sm:inline truncate max-w-[120px]">{currentClinic?.name || 'Select Clinic'}</span>
                   <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
                 </button>
                 
@@ -177,62 +148,15 @@ export const Header: React.FC = () => {
                           setClinicById(c.id);
                           setClinicMenuOpen(false);
                         }}
-                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800 ${currentClinic.id === c.id ? 'bg-indigo-50/50 dark:bg-slate-800 font-semibold text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-slate-350'}`}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800 ${currentClinic?.id === c.id ? 'bg-indigo-50/50 dark:bg-slate-800 font-semibold text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-slate-350'}`}
                       >
                         <span className="flex items-center gap-2">
                           <span className="text-base">{c.logo}</span>
                           <span>{c.name}</span>
                         </span>
-                        {currentClinic.id === c.id && <span className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400" />}
+                        {currentClinic?.id === c.id && <span className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400" />}
                       </button>
                     ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Simulation Role Selector */}
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    setRoleMenuOpen(!roleMenuOpen);
-                    setClinicMenuOpen(false);
-                    setNotifMenuOpen(false);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/25 active:scale-95 transition"
-                  id="role-simulator-btn"
-                >
-                  <span className="text-xs uppercase opacity-80">Role:</span>
-                  <span className="capitalize">{currentRole.toLowerCase()}</span>
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-
-                {roleMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg py-1.5 ring-1 ring-black/5 animate-slide-up">
-                    <div className="px-3 py-1.5 text-xs font-bold text-amber-500 uppercase tracking-wider flex items-center gap-1">
-                      <ShieldAlert className="w-3.5 h-3.5" /> Simulation Controls
-                    </div>
-                    {(['PATIENT', 'RECEPTIONIST', 'DOCTOR', 'ADMIN'] as const).map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => handleRoleChange(r)}
-                        className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800 ${currentRole === r ? 'bg-indigo-50/50 dark:bg-indigo-950/20 font-bold text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-slate-350'}`}
-                      >
-                        <span>{r === 'PATIENT' ? 'Patient Dashboard' : r === 'RECEPTIONIST' ? 'Reception Dashboard' : r === 'DOCTOR' ? 'Doctor Dashboard' : 'Clinic Admin'}</span>
-                        {currentRole === r && <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />}
-                      </button>
-                    ))}
-                    <div className="border-t border-gray-100 dark:border-slate-800 my-1"></div>
-                    <Link
-                      href="/tv-display"
-                      target="_blank"
-                      className="w-full text-left px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center justify-between"
-                      onClick={() => setRoleMenuOpen(false)}
-                    >
-                      <span>Waiting Room TV Mode</span>
-                      <span className="text-[10px] uppercase font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded">
-                        TV Open
-                      </span>
-                    </Link>
                   </div>
                 )}
               </div>
@@ -243,7 +167,6 @@ export const Header: React.FC = () => {
                   onClick={() => {
                     setNotifMenuOpen(!notifMenuOpen);
                     setClinicMenuOpen(false);
-                    setRoleMenuOpen(false);
                   }}
                   className="p-2 rounded-xl text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-200 transition relative"
                   id="notifications-btn"
@@ -296,13 +219,23 @@ export const Header: React.FC = () => {
                   {currentUser?.avatar ? (
                     <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
                   ) : (
-                    currentUser?.name.charAt(0) || <User className="w-4 h-4" />
+                    currentUser?.name?.charAt(0) || <User className="w-4 h-4" />
                   )}
                 </div>
                 <div className="hidden lg:block text-left">
                   <div className="text-xs font-semibold text-gray-800 dark:text-slate-200 truncate max-w-[100px]">{currentUser?.name}</div>
                   <div className="text-[10px] text-gray-400 dark:text-slate-500 capitalize">{currentRole.toLowerCase()}</div>
                 </div>
+                <button
+                  onClick={async () => {
+                    await logout();
+                    router.push('/login');
+                  }}
+                  className="p-1.5 rounded-xl text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-rose-500 transition cursor-pointer"
+                  title="Log Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
               </div>
             </>
           )}

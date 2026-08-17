@@ -1,85 +1,48 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { cookies } from 'next/headers';
+import { supabase } from '@/lib/supabaseClient';
+import { createSessionToken } from '@/lib/session';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { userId, name, email, role, age, gender, phone, specialization, roomNumber } = body;
+    const { userId, name, email, role, age, gender, phone, specialization, roomNumber, accessToken } = body;
 
     if (!userId || !role) {
       return NextResponse.json({ error: 'Missing userId or role' }, { status: 400 });
     }
 
-    // 1. Ensure a default Clinic exists (Multi-tenant seed fallback)
-    let clinic = await prisma.clinic.findFirst();
-    if (!clinic) {
-      clinic = await prisma.clinic.create({
-        data: {
-          id: 'clinic-1',
-          name: 'CareFirst Medical Center',
-          subdomain: 'carefirst',
-          logoUrl: '🏥',
-          primaryColor: '#2563eb',
-        },
-      });
-
-      // Seed working hours for the clinic
-      await prisma.workingHours.createMany({
-        data: [
-          { clinicId: 'clinic-1', dayOfWeek: 1, startTime: '09:00', endTime: '17:00', isClosed: false },
-          { clinicId: 'clinic-1', dayOfWeek: 2, startTime: '09:00', endTime: '17:00', isClosed: false },
-          { clinicId: 'clinic-1', dayOfWeek: 3, startTime: '09:00', endTime: '17:00', isClosed: false },
-          { clinicId: 'clinic-1', dayOfWeek: 4, startTime: '09:00', endTime: '17:00', isClosed: false },
-          { clinicId: 'clinic-1', dayOfWeek: 5, startTime: '09:00', endTime: '17:00', isClosed: false },
-          { clinicId: 'clinic-1', dayOfWeek: 6, startTime: '09:00', endTime: '13:00', isClosed: false },
-          { clinicId: 'clinic-1', dayOfWeek: 0, startTime: 'Closed', endTime: 'Closed', isClosed: true },
-        ],
-      });
+    // Privileged roles must present a verifiable Supabase access token.
+    // This prevents arbitrary profile creation / privileged session minting.
+    const isPrivileged = ['DOCTOR', 'RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN'].includes(role);
+    let verifiedUserId = userId;
+    if (isPrivileged) {
+      if (!accessToken) {
+        return NextResponse.json({ error: 'Authentication required for privileged roles' }, { status: 401 });
+      }
+      const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+      if (error || !user) {
+        return NextResponse.json({ error: 'Invalid session token' }, { status: 401 });
+      }
+      verifiedUserId = user.id;
     }
 
-    // 2. Seed default doctors so there is data available for check-ins
-    const existingDr1 = await prisma.doctor.findFirst({ where: { specialization: 'Cardiologist' } });
-    if (!existingDr1) {
-      await prisma.doctor.create({
-        data: {
-          id: 'doc-1',
-          clinicId: clinic.id,
-          userId: 'doc-auth-1', // Placeholder auth ID
-          name: 'Dr. Sarah Jenkins',
-          email: 's.jenkins@carefirst.com',
-          specialization: 'Cardiologist',
-          roomNumber: 'Room 102',
-          isActive: 'true',
-        },
-      });
-    }
+    // 1. Find a clinic the user belongs to (no auto-seeding)
+    const clinic = await prisma.clinic.findFirst();
 
-    const existingDr2 = await prisma.doctor.findFirst({ where: { specialization: 'Pediatrician' } });
-    if (!existingDr2) {
-      await prisma.doctor.create({
-        data: {
-          id: 'doc-2',
-          clinicId: clinic.id,
-          userId: 'doc-auth-2',
-          name: 'Dr. Robert Chen',
-          email: 'r.chen@carefirst.com',
-          specialization: 'Pediatrician',
-          roomNumber: 'Room 105',
-          isActive: 'true',
-        },
-      });
-    }
-
-    let profile: any = null;
+    let profile: unknown = null;
+    let clinicId = clinic?.id || '';
+    let clinicStatus = clinic?.status || 'PENDING';
 
     // 3. Sync profile depending on role
     if (role === 'PATIENT') {
-      profile = await prisma.patient.findUnique({ where: { userId } });
-      if (!profile) {
-        profile = await prisma.patient.create({
+      let patient = await prisma.patient.findUnique({ where: { userId: verifiedUserId } });
+      if (!patient) {
+        patient = await prisma.patient.create({
           data: {
-            clinicId: clinic.id,
-            userId,
+            clinicId: clinic?.id || '',
+            userId: verifiedUserId,
             name: name || 'Anonymous Patient',
             email,
             phone: phone || '+1 (555) 000-0000',
@@ -88,13 +51,14 @@ export async function POST(request: Request) {
           },
         });
       }
+      profile = patient;
     } else if (role === 'DOCTOR') {
-      profile = await prisma.doctor.findUnique({ where: { userId } });
-      if (!profile) {
-        profile = await prisma.doctor.create({
+      let doctor = await prisma.doctor.findUnique({ where: { userId: verifiedUserId } });
+      if (!doctor) {
+        doctor = await prisma.doctor.create({
           data: {
-            clinicId: clinic.id,
-            userId,
+            clinicId: clinic?.id || '',
+            userId: verifiedUserId,
             name: name || 'Dr. Physician',
             email: email || '',
             phone: phone || '',
@@ -104,21 +68,64 @@ export async function POST(request: Request) {
           },
         });
       }
+      clinicId = doctor.clinicId;
+      profile = doctor;
     } else if (role === 'RECEPTIONIST') {
-      profile = await prisma.receptionist.findUnique({ where: { userId } });
-      if (!profile) {
-        profile = await prisma.receptionist.create({
+      let receptionist = await prisma.receptionist.findUnique({ where: { userId: verifiedUserId } });
+      if (!receptionist) {
+        receptionist = await prisma.receptionist.create({
           data: {
-            clinicId: clinic.id,
-            userId,
+            clinicId: clinic?.id || '',
+            userId: verifiedUserId,
             name: name || 'Reception Staff',
             email: email || '',
           },
         });
       }
+      clinicId = receptionist.clinicId;
+      profile = receptionist;
     } else if (role === 'ADMIN') {
-      // Admins are mapped at the clinic level
-      profile = { isAdmin: true, name: name || 'Clinic Admin', email };
+      let admin = await prisma.clinicAdmin.findUnique({
+        where: { userId: verifiedUserId },
+        include: { clinic: true },
+      });
+      if (!admin) {
+        admin = await prisma.clinicAdmin.create({
+          data: {
+            clinicId: clinic?.id || '',
+            userId: verifiedUserId,
+            name: name || 'Clinic Admin',
+            email: email || '',
+            phone: phone || '',
+          },
+          include: { clinic: true },
+        });
+      }
+      clinicId = admin.clinicId;
+      clinicStatus = admin.clinic.status;
+      profile = admin;
+    } else if (role === 'SUPER_ADMIN') {
+      profile = { name: 'Super Admin', email };
+      clinicStatus = 'VERIFIED';
+    }
+
+    // 4. Set the signed session cookie for middleware route guards (skip for guests)
+    if (role !== 'PATIENT') {
+      const cookieStore = await cookies();
+      const sessionToken = createSessionToken({
+        userId: verifiedUserId,
+        role,
+        clinicId,
+        clinicStatus,
+      });
+
+      cookieStore.set('q-clinix-session', sessionToken, {
+        path: '/',
+        maxAge: 86400, // 24 hours
+        sameSite: 'lax',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+      });
     }
 
     return NextResponse.json({
@@ -127,8 +134,8 @@ export async function POST(request: Request) {
       role,
       profile,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error syncing auth profile:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

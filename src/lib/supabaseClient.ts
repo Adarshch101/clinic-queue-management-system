@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, RealtimeChannel } from '@supabase/supabase-js';
 
 // Fallback values for local client-side preview without breaking the build
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mock-project.supabase.co';
@@ -6,41 +6,41 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock-anon-
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export const QUEUE_CHANNEL = 'clinic-queue-channel';
+export const NOTIFICATION_CHANNEL = 'clinic-notification-channel';
+
+type ChannelCallback = (payload: Record<string, unknown>) => void;
+
 /**
- * Custom hook or helper to simulate real-time subscriptions in our prototype.
- * Uses a simple event bus mechanism to emulate real-time queue updates.
+ * Real-time wrapper over Supabase Realtime broadcast channels.
+ * (Replaces the previous in-memory event-bus mock.)
  */
-type ChannelCallback = (payload: any) => void;
-
-class RealtimeMockBus {
-  private listeners: Record<string, ChannelCallback[]> = {};
-
+export const realtimeBus = {
   subscribe(channel: string, callback: ChannelCallback) {
-    if (!this.listeners[channel]) {
-      this.listeners[channel] = [];
-    }
-    this.listeners[channel].push(callback);
-    
-    return {
-      unsubscribe: () => {
-        this.listeners[channel] = this.listeners[channel].filter(cb => cb !== callback);
-      }
-    };
-  }
+    const realChannel: RealtimeChannel = supabase.channel(channel);
 
-  broadcast(channel: string, payload: any) {
-    if (this.listeners[channel]) {
-      this.listeners[channel].forEach(callback => {
+    realChannel
+      .on('broadcast', { event: 'message' }, (payload) => {
         try {
-          callback(payload);
+          callback(payload.payload);
         } catch (e) {
           console.error('Error executing real-time listener:', e);
         }
-      });
-    }
-  }
-}
+      })
+      .subscribe();
 
-export const mockRealtimeBus = new RealtimeMockBus();
-export const QUEUE_CHANNEL = 'clinic-queue-channel';
-export const NOTIFICATION_CHANNEL = 'clinic-notification-channel';
+    return {
+      unsubscribe: () => {
+        supabase.removeChannel(realChannel);
+      }
+    };
+  },
+
+  async broadcast(channel: string, payload: Record<string, unknown>) {
+    await supabase.channel(channel).send({
+      type: 'broadcast',
+      event: 'message',
+      payload,
+    });
+  }
+};

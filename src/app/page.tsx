@@ -1,422 +1,239 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useApp } from '@/context/AppContext';
-import { Header } from '@/components/dashboard/Header';
+import React, { useState, useEffect } from 'react';
+import { PublicLayout } from '@/components/layout/PublicLayout';
+import { Card } from '@/components/ui/Card';
+import { Accordion } from '@/components/ui/Accordion';
+import { SearchPanel } from '@/features/public/components/SearchPanel';
+import { ClinicCard, type PublicClinic } from '@/features/public/components/ClinicCard';
+import { JoinQueueDialog } from '@/features/public/components/JoinQueueDialog';
+import { TokenSuccess, type TokenSuccessData } from '@/features/public/components/TokenSuccess';
 import { 
-  ArrowRight, 
-  Clock, 
-  Smartphone, 
-  Users, 
-  Tv, 
-  Bot, 
-  ShieldCheck, 
-  Sparkles,
-  Layers,
-  HeartPulse,
-  ChevronRight,
-  Database,
-  MonitorPlay,
-  Calendar,
-  MessageSquare,
-  CheckCircle
+  Clock, Smartphone, Users, Tv, Bot, 
+  Layers, Sparkles, Stethoscope
 } from 'lucide-react';
-import Link from 'next/link';
+
+interface HomeSearchParams {
+  query?: string;
+  location?: string;
+  pincode?: string;
+  openNow?: boolean;
+  hasQueue?: boolean;
+  clinicType?: string;
+  sortBy?: string;
+}
 
 export default function Home() {
-  const { currentRole, setCurrentRole, setCurrentUserById } = useApp();
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  // Clinic search list states
+  const [clinicsList, setClinicsList] = useState<PublicClinic[]>([]);
+  const [loadingClinics, setLoadingClinics] = useState(true);
+  const [searchParams, setSearchParams] = useState<HomeSearchParams>({ query: '', sortBy: 'shortest_wait' });
+
+  // Dialog / Modal states
+  const [activeJoinClinic, setActiveJoinClinic] = useState<PublicClinic | null>(null);
+  const [generatedToken, setGeneratedToken] = useState<TokenSuccessData | null>(null);
+
+  // Fetch clinics based on search/filters
+  const fetchClinics = async (params: HomeSearchParams) => {
+    setLoadingClinics(true);
+    try {
+      const queryString = new URLSearchParams({
+        query: params.query || '',
+        location: params.location || '',
+        pincode: params.pincode || '',
+        openNow: params.openNow ? 'true' : 'false',
+        hasQueue: params.hasQueue ? 'true' : 'false',
+        clinicType: params.clinicType || 'All',
+        sortBy: params.sortBy || 'shortest_wait',
+      }).toString();
+
+      const res = await fetch(`/api/clinics/search?${queryString}`);
+      if (res.ok) {
+        const data = await res.json();
+        setClinicsList(data);
+      }
+    } catch (e) {
+      console.error('Failed to query clinics:', e);
+    } finally {
+      setLoadingClinics(false);
+    }
+  };
+
+  useEffect(() => {
+    const id = setTimeout(() => fetchClinics(searchParams), 0);
+    return () => clearTimeout(id);
+  }, [searchParams]);
 
   const features = [
     {
-      icon: <Smartphone className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />,
+      icon: <Smartphone className="w-5 h-5 text-primary" />,
       title: "QR Check-In Kiosk",
       description: "Patients check in by scanning a unique QR code. Automates token generation and alerts staff instantly."
     },
     {
-      icon: <Clock className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />,
+      icon: <Clock className="w-5 h-5 text-primary" />,
       title: "Live Queue Status",
       description: "Real-time updates of queue positions, estimated wait times, and serving room indicators via WebSockets."
     },
     {
-      icon: <Users className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />,
+      icon: <Users className="w-5 h-5 text-emerald-500" />,
       title: "Walk-In Registrations",
       description: "Fast-track tablet inputs for walk-in patient profiles. Generates physical and digital token slips."
     },
     {
-      icon: <Bot className="w-6 h-6 text-violet-600 dark:text-violet-400" />,
+      icon: <Bot className="w-5 h-5 text-violet-500" />,
       title: "AI Optimization",
       description: "Predictive algorithms forecasting patient arrival surges, consultation duration, and no-show probabilities."
     },
     {
-      icon: <Tv className="w-6 h-6 text-rose-600 dark:text-rose-400" />,
+      icon: <Tv className="w-5 h-5 text-rose-500" />,
       title: "TV Waiting Room Display",
       description: "High-contrast visual boards with voice synthetic ticket announcements to coordinate waiting halls."
     },
     {
-      icon: <Layers className="w-6 h-6 text-amber-600 dark:text-amber-400" />,
+      icon: <Layers className="w-5 h-5 text-amber-500" />,
       title: "Multi-Clinic SaaS",
       description: "Run multiple branches or clinics on a unified tenant model. Strict isolated data architectures."
     }
   ];
 
-  const pricingTiers = [
-    {
-      name: "Starter Clinic",
-      price: "$49",
-      period: "month",
-      description: "Perfect for single practitioner clinics getting digitized.",
-      features: [
-        "1 Active Doctor Queue",
-        "Reception Walk-In Interface",
-        "SMS Queue Notifications",
-        "Digital Patient Board",
-        "Standard QR Check-In"
-      ],
-      popular: false,
-      cta: "Start Free Trial"
-    },
-    {
-      name: "Smart Clinic Pro",
-      price: "$129",
-      period: "month",
-      description: "Ideal for growing clinics with multiple rooms and doctors.",
-      features: [
-        "Up to 10 Doctor Queues",
-        "TV Wait Room Display Mode",
-        "Voice synthesizers (Text-To-Speech)",
-        "Patient Medical Report Uploads",
-        "AI Wait Time Predictions (Beta)",
-        "Priority Support"
-      ],
-      popular: true,
-      cta: "Upgrade to Pro"
-    },
-    {
-      name: "Enterprise SaaS",
-      price: "$299",
-      period: "month",
-      description: "For multi-branch medical organizations and hospitals.",
-      features: [
-        "Unlimited Clinics & Doctors",
-        "Fully Brandable Custom Subdomains",
-        "Full AI Optimizations Suite",
-        "API & Webhook Integrations",
-        "Dedicated Server Deployment",
-        "SLA & Premium Support"
-      ],
-      popular: false,
-      cta: "Contact Enterprise"
-    }
-  ];
-
-  const handleLaunchDashboard = (role: 'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN') => {
-    setCurrentRole(role);
-    if (role === 'PATIENT') {
-      setCurrentUserById('pat-1');
-    } else if (role === 'RECEPTIONIST') {
-      setCurrentUserById('receptionist');
-    } else if (role === 'DOCTOR') {
-      setCurrentUserById('doc-1');
-    } else if (role === 'ADMIN') {
-      setCurrentUserById('admin');
-    }
-  };
-
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-20 pb-16 lg:pt-28 lg:pb-24 border-b border-gray-100 dark:border-slate-800/40">
-        {/* Decorative elements */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-blue-400/10 dark:bg-sky-500/5 blur-3xl -z-10 pointer-events-none" />
-        <div className="absolute top-1/3 left-1/4 w-[250px] h-[250px] rounded-full bg-indigo-400/10 dark:bg-indigo-500/5 blur-3xl -z-10 pointer-events-none" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-blue-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-50/50 dark:border-blue-900/30 mb-6 shadow-sm">
-            <HeartPulse className="w-3.5 h-3.5" /> Introducing Q-Clinix SaaS Version 2.0
-          </div>
-          
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight max-w-4xl mx-auto leading-tight">
-            The Smart, AI-Ready{" "}
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-indigo-500 bg-clip-text text-transparent">
-              Queue Experience
-            </span>{" "}
-            for Modern Medical Clinics
-          </h1>
-          
-          <p className="mt-6 text-lg sm:text-xl text-gray-500 dark:text-slate-400 max-w-2xl mx-auto font-normal">
-            Eliminate chaotic waiting rooms, optimize doctor consultations, and provide patients with real-time wait telemetry. Built for multi-tenant SaaS growth.
-          </p>
-
-          {/* Quick Demo Dashboard Access Panel */}
-          <div className="mt-10 max-w-3xl mx-auto p-6 glass-panel border-indigo-50/60 dark:border-slate-800 glow-primary">
-            <div className="text-xs uppercase font-extrabold tracking-wider text-indigo-600 dark:text-indigo-400 mb-3.5 flex items-center justify-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" /> Interactive Sandbox Mode
+    <PublicLayout>
+      <div className="flex flex-col gap-16 pb-20">
+        
+        {/* HERO SEARCH PORTAL BANNER */}
+        <section className="bg-gradient-to-tr from-bg-surface via-bg-surface to-primary/5 border-b border-border-subtle/40 pt-16 pb-12">
+          <div className="max-w-6xl mx-auto px-4 flex flex-col items-center text-center gap-6">
+            <div className="px-3 py-1 font-black text-[9px] uppercase tracking-widest bg-primary/10 text-primary border border-primary/15 rounded-full flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5" /> Skip the Waiting Hall
             </div>
-            <p className="text-xs text-gray-400 dark:text-slate-500 mb-5">
-              Experience the platform instantly. Choose a simulated portal to see how real-time queues update:
+            
+            <h1 className="text-4xl sm:text-5xl font-black text-text-primary tracking-tight max-w-2xl leading-tight">
+              Locate Clinics & Join the <span className="text-primary bg-clip-text bg-gradient-to-r from-primary to-indigo-600">Lobby Queue</span> Digitally
+            </h1>
+            
+            <p className="text-xs sm:text-sm text-text-secondary max-w-lg leading-relaxed font-semibold">
+              Find qualified physicians, track live patient wait times, and join virtual lines from your mobile browser without creating accounts.
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { r: 'PATIENT', path: '/patient/dashboard', label: 'Patient View', color: 'hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-sky-400' },
-                { r: 'RECEPTIONIST', path: '/receptionist/dashboard', label: 'Receptionist View', color: 'hover:border-teal-500 hover:text-teal-600 dark:hover:text-teal-400' },
-                { r: 'DOCTOR', path: '/doctor/dashboard', label: 'Doctor View', color: 'hover:border-violet-500 hover:text-violet-600 dark:hover:text-violet-400' },
-                { r: 'ADMIN', path: '/admin/dashboard', label: 'Admin View', color: 'hover:border-amber-500 hover:text-amber-600 dark:hover:text-amber-400' },
-              ].map((role) => (
-                <Link
-                  key={role.r}
-                  href={role.path}
-                  onClick={() => handleLaunchDashboard(role.r as any)}
-                  className={`px-3 py-3 rounded-xl border border-gray-200/60 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 text-xs font-semibold text-gray-700 dark:text-slate-300 shadow-sm flex flex-col items-center justify-center gap-1.5 transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${role.color}`}
-                >
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                  {role.label}
-                </Link>
+
+            <div className="w-full max-w-3xl mt-4">
+              <SearchPanel onSearch={setSearchParams} />
+            </div>
+          </div>
+        </section>
+
+        {/* CLINIC SEARCH RESULTS PORTAL */}
+        <section className="max-w-6xl mx-auto px-4 w-full flex flex-col gap-6 -mt-8">
+          <div className="flex justify-between items-center border-b border-border-subtle/50 pb-3">
+            <h2 className="text-base font-extrabold text-text-primary flex items-center gap-2">
+              <Stethoscope className="w-5 h-5 text-primary" /> Near-by Operational Clinics
+            </h2>
+            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider bg-bg-muted px-2.5 py-1 rounded-full">
+              {clinicsList.length} matching centers
+            </span>
+          </div>
+
+          {loadingClinics ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="h-64 rounded-2xl bg-bg-surface border border-border-subtle animate-pulse p-5 flex flex-col justify-between">
+                  <div className="w-1/3 h-4 bg-bg-muted rounded-md" />
+                  <div className="w-2/3 h-6 bg-bg-muted rounded-md" />
+                  <div className="w-full h-8 bg-bg-muted rounded-md" />
+                </div>
               ))}
             </div>
-          </div>
+          ) : clinicsList.length === 0 ? (
+            <div className="border border-dashed border-border-subtle rounded-2xl p-16 text-center flex flex-col items-center justify-center bg-bg-surface/50">
+              <span className="text-4xl filter opacity-80 mb-3 select-none">🏥</span>
+              <h3 className="text-sm font-bold text-text-primary">No Matching Clinics Found</h3>
+              <p className="text-xs text-text-muted mt-1 max-w-xs leading-relaxed font-semibold">
+                Adjust search keywords or remove location filters to locate available healthcare centers.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {clinicsList.map((clinic) => (
+                <ClinicCard
+                  key={clinic.id}
+                  clinic={clinic}
+                  onJoinQueue={setActiveJoinClinic}
+                />
+              ))}
+            </div>
+          )}
+        </section>
 
-          <div className="mt-8 flex items-center justify-center gap-4">
-            <Link 
-              href="/patient/dashboard"
-              onClick={() => handleLaunchDashboard('PATIENT')}
-              className="px-6 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/25 transition flex items-center gap-2"
-            >
-              Launch Patient App <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/tv-display"
-              target="_blank"
-              className="px-6 py-3 rounded-xl text-sm font-semibold border border-gray-250 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 transition flex items-center gap-2"
-            >
-              <MonitorPlay className="w-4 h-4 text-indigo-500" /> Open TV Display
-            </Link>
-          </div>
-        </div>
-      </section>
+        {/* MODAL WRAPPER OR CONDITIONAL PORTALS */}
+        {activeJoinClinic && (
+          <JoinQueueDialog
+            clinic={activeJoinClinic}
+            onClose={() => setActiveJoinClinic(null)}
+            onSuccess={(tokenData) => {
+              setActiveJoinClinic(null);
+              setGeneratedToken(tokenData);
+              fetchClinics(searchParams); // Refresh status count
+            }}
+          />
+        )}
 
-      {/* Feature Grids */}
-      <section className="py-20 bg-gray-50/50 dark:bg-slate-900/20" id="features">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-slate-100 sm:text-4xl">
-              Clinic Operations, Reimagined
-            </h2>
-            <p className="mt-4 text-base text-gray-500 dark:text-slate-400">
-              A comprehensive suite built with clinic staff, patients, and physicians in mind. Configurable for single medical centers or nationwide healthcare chains.
+        {generatedToken && (
+          <TokenSuccess
+            tokenData={generatedToken}
+            onClose={() => setGeneratedToken(null)}
+          />
+        )}
+
+        {/* MARKETING / PRODUCT SECTION (retaining existing SaaS elements) */}
+        <section className="max-w-6xl mx-auto px-4 w-full flex flex-col gap-12 border-t border-border-subtle/50 pt-16">
+          <div className="text-center flex flex-col items-center gap-3">
+            <h2 className="text-2xl font-black text-text-primary tracking-tight">Clinic SaaS Operations Platform</h2>
+            <p className="text-xs text-text-secondary max-w-md font-semibold">
+              Powering modern clinics with visual lobby status displays, AI wait estimations, and tablet check-in portals.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feat, index) => (
-              <div key={index} className="p-6 glass-panel glass-panel-hover flex flex-col gap-4">
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-slate-800/80 flex items-center justify-center shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {features.map((feat, idx) => (
+              <Card key={idx} className="p-6 border border-border-subtle bg-bg-surface flex flex-col gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shadow-sm text-primary">
                   {feat.icon}
                 </div>
-                <div>
-                  <h3 className="font-bold text-lg text-gray-800 dark:text-slate-100">{feat.title}</h3>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-slate-400 leading-relaxed">{feat.description}</p>
-                </div>
-              </div>
+                <h3 className="font-extrabold text-sm text-text-primary mt-1">{feat.title}</h3>
+                <p className="text-xs text-text-secondary leading-relaxed font-semibold">{feat.description}</p>
+              </Card>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* AI Readiness Showcase */}
-      <section className="py-20 border-t border-b border-gray-100 dark:border-slate-800/40 relative overflow-hidden">
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-indigo-500/10 blur-3xl -z-10" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
-            
-            <div className="mb-12 lg:mb-0">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30 mb-4">
-                <Bot className="w-3.5 h-3.5" /> Next-Gen AI Telemetry
-              </div>
-              <h2 className="text-3xl font-extrabold text-gray-900 dark:text-slate-100 sm:text-4xl leading-tight">
-                AI Queue Optimization & Smart Flow Predictions
-              </h2>
-              <p className="mt-4 text-base text-gray-500 dark:text-slate-400 leading-relaxed">
-                Q-Clinix is built with intelligence at its core. By analyzing patient registration timestamps, clinic check-in logs, average doctor check-up schedules, and historical seasonal clinic volume data, our AI engine forecasts:
-              </p>
-              
-              <ul className="mt-6 space-y-3.5">
-                {[
-                  "Dynamic wait time adjusts based on doctor check-up speed.",
-                  "Surge prediction warning staff 24 hours prior to peak hours.",
-                  "Predictive analysis flagging potential client no-shows.",
-                  "Clinical emergency path optimizations."
-                ].map((item, idx) => (
-                  <li key={idx} className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-slate-350">
-                    <ShieldCheck className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="glass-panel p-6 border-indigo-100/60 dark:border-slate-800 glow-primary bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-950">
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">🤖</span>
-                  <div>
-                    <div className="text-xs font-bold uppercase text-gray-400">AI Intelligence Core</div>
-                    <div className="text-sm font-bold">Predictive Wait Board</div>
-                  </div>
-                </div>
-                <span className="text-[10px] bg-emerald-500/10 text-emerald-500 font-bold px-2 py-0.5 rounded-full">Active</span>
-              </div>
-
-              <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-850/60 border border-gray-150 dark:border-slate-800">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-semibold text-gray-500">Wait-Time Prediction Confidence</span>
-                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">94.2%</span>
-                  </div>
-                  <div className="w-full bg-gray-250 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-500 to-violet-600 h-full rounded-full w-[94.2%]" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-xl border border-gray-150 dark:border-slate-800">
-                    <div className="text-[10px] text-gray-400 uppercase font-semibold">Today's Peak Hour</div>
-                    <div className="text-base font-extrabold text-rose-500 mt-1">11:00 AM - 12:30 PM</div>
-                  </div>
-                  <div className="p-3.5 rounded-xl border border-gray-150 dark:border-slate-800">
-                    <div className="text-[10px] text-gray-400 uppercase font-semibold">Avg. consultation Time</div>
-                    <div className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">11.4 minutes</div>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-indigo-500/5 border border-indigo-500/20 flex gap-3">
-                  <div className="text-lg">💡</div>
-                  <div>
-                    <div className="text-xs font-bold text-indigo-900 dark:text-indigo-300">AI Staffing Optimization Tip</div>
-                    <div className="text-[11px] text-indigo-700 dark:text-indigo-400 mt-0.5">
-                      Forecast predicts 1.5x walk-in surge tomorrow between 2-4 PM. We recommend scheduling Dr. Chen for support.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Tiers */}
-      <section className="py-20" id="pricing">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-slate-100 sm:text-4xl">
-              Flexible Multi-Clinic Pricing Plans
-            </h2>
-            <p className="mt-4 text-base text-gray-500 dark:text-slate-400">
-              Upgrade or downgrade at any time. Scale features based on your healthcare branch volume.
-            </p>
+        {/* FAQ ACCORDION PANEL */}
+        <section className="max-w-4xl mx-auto px-4 w-full flex flex-col gap-8 border-t border-border-subtle/50 pt-16">
+          <div className="text-center">
+            <h2 className="text-xl font-black text-text-primary tracking-tight">Frequently Asked Questions</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {pricingTiers.map((tier, index) => (
-              <div 
-                key={index} 
-                className={`p-8 glass-panel relative flex flex-col justify-between ${tier.popular ? 'border-indigo-500/60 dark:border-blue-600 glow-primary bg-gradient-to-b from-blue-50/10 to-white dark:from-slate-900' : ''}`}
-              >
-                {tier.popular && (
-                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[10px] uppercase font-bold tracking-wider px-3 py-1 rounded-full shadow">
-                    Most Popular
-                  </span>
-                )}
-                <div>
-                  <h3 className="font-extrabold text-xl text-gray-800 dark:text-slate-100">{tier.name}</h3>
-                  <p className="mt-2 text-xs text-gray-400 leading-normal">{tier.description}</p>
-                  
-                  <div className="mt-6 flex items-baseline gap-1">
-                    <span className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-slate-100">{tier.price}</span>
-                    <span className="text-sm font-semibold text-gray-400">/{tier.period}</span>
-                  </div>
+          <Accordion
+            items={[
+              {
+                id: 'faq-1',
+                title: 'Do I need to sign up to join the queue?',
+                content: 'No. Q-Clinix enforces account-free patient check-ins. Simply input your name, age, and phone number to obtain a waiting slip. The browser saves your ticket key dynamically.',
+              },
+              {
+                id: 'faq-2',
+                title: 'How is the wait time estimated?',
+                content: "Estimates are derived by multiplying the current count of waiting patient tokens ahead of you by the doctor's historical average consultation time limit.",
+              },
+              {
+                id: 'faq-3',
+                title: 'Can I cancel my place if I am running late?',
+                content: 'Yes. You can cancel your online check-in ticket at any time directly from the Track Queue console.',
+              },
+            ]}
+          />
+        </section>
 
-                  <ul className="mt-8 space-y-4 border-t border-gray-100 dark:border-slate-800 pt-6">
-                    {tier.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center gap-2.5 text-xs text-gray-600 dark:text-slate-350">
-                        <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <button 
-                  onClick={() => alert(`Simulated subscription: ${tier.name}`)}
-                  className={`w-full py-3 rounded-xl mt-8 text-xs font-bold transition-all ${tier.popular ? 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg shadow-indigo-500/10' : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-350 hover:bg-gray-200 dark:hover:bg-slate-700'}`}
-                >
-                  {tier.cta}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Contact Section */}
-      <section className="py-20 bg-gray-50/50 dark:bg-slate-900/10 border-t border-gray-100 dark:border-slate-800/40" id="contact">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-slate-100">
-            Interested in Q-Clinix SaaS?
-          </h2>
-          <p className="mt-3 text-base text-gray-500 dark:text-slate-400 max-w-xl mx-auto">
-            Leave us your email and we'll schedule a custom demonstration with your hospital administration.
-          </p>
-
-          <form 
-            onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}
-            className="mt-8 max-w-md mx-auto flex gap-2"
-          >
-            {submitted ? (
-              <div className="w-full py-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2">
-                <CheckCircle className="w-4 h-4" /> Demonstration request submitted! We will contact you soon.
-              </div>
-            ) : (
-              <>
-                <input
-                  type="email"
-                  required
-                  placeholder="Enter clinic work email..."
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-250 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-sky-500"
-                />
-                <button
-                  type="submit"
-                  className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shrink-0 transition"
-                >
-                  Get Quote
-                </button>
-              </>
-            )}
-          </form>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="mt-auto border-t border-gray-100 dark:border-slate-800/40 bg-white dark:bg-[#060814] py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-400">
-          <div>
-            © 2026 Q-Clinix Inc. All rights reserved. Made for medical clinics globally.
-          </div>
-          <div className="flex gap-4">
-            <a href="#" className="hover:text-indigo-500">Privacy Policy</a>
-            <span>•</span>
-            <a href="#" className="hover:text-indigo-500">Terms of Service</a>
-            <span>•</span>
-            <a href="#" className="hover:text-indigo-500">HIPAA Compliance</a>
-          </div>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </PublicLayout>
   );
 }

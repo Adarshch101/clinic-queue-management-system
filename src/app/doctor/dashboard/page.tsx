@@ -2,21 +2,17 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Header } from '@/components/dashboard/Header';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input, Textarea } from '@/components/ui/Input';
+import { Badge } from '@/components/ui/Badge';
+import { Dialog } from '@/components/ui/Dialog';
+import type { MedicalReport } from '@/lib/mockData';
 import { 
-  CheckCircle, 
-  SkipForward, 
-  HelpCircle, 
-  Pause, 
-  Play, 
-  Clock, 
-  AlertOctagon, 
-  Check, 
-  Eye, 
-  History, 
-  FileText, 
-  Activity,
-  AlertCircle
+  SkipForward, HelpCircle, Pause, Play, 
+  Clock, AlertOctagon, Check, Eye, History, FileText, 
+  Activity 
 } from 'lucide-react';
 
 export default function DoctorDashboard() {
@@ -33,7 +29,10 @@ export default function DoctorDashboard() {
     pauseQueue,
     resumeQueue,
     addDelay,
-    approveEmergency
+    approveEmergency,
+    callPrevious,
+    transferPatient,
+    cancelPatientToken
   } = useApp();
 
   // Active doctor details
@@ -45,8 +44,10 @@ export default function DoctorDashboard() {
   const [prescription, setPrescription] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Selected report to preview in overlay
-  const [previewReport, setPreviewReport] = useState<any>(null);
+  // Selected report to preview in overlay modal
+  const [previewReport, setPreviewReport] = useState<MedicalReport | null>(null);
+  
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Active token currently in consultation / called
   const activeToken = queueTokens.find(
@@ -63,353 +64,468 @@ export default function DoctorDashboard() {
     t => t.doctorId === myDoctor.id && t.status === 'COMPLETED'
   );
 
-  // Pending emergency approvals (status WAITING, isEmergency is true, but priority is not yet approved level e.g. 1000)
+  // Pending emergency approvals
   const pendingEmergencies = queueTokens.filter(
     t => t.doctorId === myDoctor.id && t.isEmergency && t.status === 'WAITING' && t.priority < 1000
   );
 
-  const handleCallNext = () => {
-    callNext(myDoctor.id);
-    setDiagnosis('');
-    setPrescription('');
-    setNotes('');
+  const handleCallNext = async () => {
+    setActionLoading(true);
+    try {
+      await callNext(myDoctor.id);
+      setDiagnosis('');
+      setPrescription('');
+      setNotes('');
+    } catch {
+      alert('Failed to call next patient.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleComplete = (e: React.FormEvent) => {
+  const handleComplete = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeToken) return;
 
-    completeConsultation(
-      activeToken.id,
-      diagnosis || 'General check-up consultation completed',
-      prescription,
-      notes
-    );
-
-    setDiagnosis('');
-    setPrescription('');
-    setNotes('');
+    setActionLoading(true);
+    try {
+      await completeConsultation(
+        activeToken.id,
+        diagnosis || 'General check-up consultation completed',
+        prescription,
+        notes
+      );
+      setDiagnosis('');
+      setPrescription('');
+      setNotes('');
+    } catch {
+      alert('Failed to complete consultation.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     if (!activeToken) return;
-    skipPatient(activeToken.id);
+    setActionLoading(true);
+    try {
+      await skipPatient(activeToken.id);
+    } catch {
+      alert('Failed to skip patient.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleRecall = () => {
+  const handleRecall = async () => {
     if (!activeToken) return;
-    recallPatient(activeToken.id);
+    setActionLoading(true);
+    try {
+      await recallPatient(activeToken.id);
+    } catch {
+      alert('Failed to recall patient.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePause = async () => {
+    setActionLoading(true);
+    try {
+      await pauseQueue(myDoctor.id);
+    } catch {
+      alert('Failed to pause queue.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleResume = async () => {
+    setActionLoading(true);
+    try {
+      await resumeQueue(myDoctor.id);
+    } catch {
+      alert('Failed to resume queue.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAddDelay = async () => {
+    setActionLoading(true);
+    try {
+      await addDelay(myDoctor.id, 10);
+    } catch {
+      alert('Failed to add delay.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Stats
   const completedCount = completedToday.length;
-  const avgWait = myDoctor.averageConsultationTime;
+  const avgWait = myDoctor?.averageConsultationTime || 12;
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <DashboardLayout>
+      <div className="flex flex-col gap-8">
         
-        {/* Doctor Banner */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        {/* Doctor Header Banner */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-black tracking-tight">{myDoctor.name} Dashboard</h1>
-            <p className="text-sm text-gray-500 dark:text-slate-400">
-              Consulting Room: <span className="font-semibold text-indigo-600 dark:text-indigo-400">{myDoctor.roomNumber}</span> • Specialization: {myDoctor.specialization}
+            <h1 className="text-2xl font-black tracking-tight text-text-primary">{myDoctor?.name} Dashboard</h1>
+            <p className="text-xs text-text-secondary mt-1 font-semibold">
+              Consulting: <span className="text-primary">{myDoctor?.roomNumber}</span> • Specialization: {myDoctor?.specialization}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 font-semibold uppercase">Quick Controls:</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Queue controls:</span>
             {isPaused ? (
-              <button
-                onClick={() => resumeQueue(myDoctor.id)}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 transition"
+              <Button
+                onClick={handleResume}
+                variant="primary"
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-sm"
+                isLoading={actionLoading}
               >
                 <Play className="w-3.5 h-3.5 fill-white" /> Resume Queue
-              </button>
+              </Button>
             ) : (
-              <button
-                onClick={() => pauseQueue(myDoctor.id)}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1.5 transition"
+              <Button
+                onClick={handlePause}
+                variant="primary"
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white border-0 shadow-sm"
+                isLoading={actionLoading}
               >
                 <Pause className="w-3.5 h-3.5 fill-white" /> Pause Queue
-              </button>
+              </Button>
             )}
 
-            <button
-              onClick={() => addDelay(myDoctor.id, 10)}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold border border-gray-250 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-gray-50 flex items-center gap-1.5 transition"
+            <Button
+              onClick={handleAddDelay}
+              variant="outline"
+              size="sm"
+              isLoading={actionLoading}
             >
-              <Clock className="w-3.5 h-3.5 text-indigo-500" /> Add +10m Delay
-            </button>
+              <Clock className="w-3.5 h-3.5 text-primary" /> Add +10m Delay
+            </Button>
+
+            <Button
+              onClick={async () => {
+                setActionLoading(true);
+                try {
+                  await callPrevious(myDoctor.id);
+                } catch {
+                  alert('Failed to call previous patient.');
+                } finally {
+                  setActionLoading(false);
+                }
+              }}
+              variant="outline"
+              size="sm"
+              isLoading={actionLoading}
+            >
+              Recall Previous
+            </Button>
           </div>
         </div>
 
         {/* Pending Emergency Alert banner */}
         {pendingEmergencies.map((emg) => (
-          <div key={emg.id} className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-bounce">
+          <div key={emg.id} className="p-4 rounded-xl bg-danger-muted border border-danger/25 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-bounce">
             <div className="flex items-center gap-3">
-              <AlertOctagon className="w-5 h-5 text-rose-500 shrink-0" />
+              <AlertOctagon className="w-5 h-5 text-danger shrink-0 animate-pulse" />
               <div>
-                <span className="text-xs font-black text-rose-500 uppercase tracking-wider bg-rose-500/10 px-2 py-0.5 rounded mr-2">
-                  Emergency Approval Requested
+                <span className="text-[9px] font-black text-danger uppercase tracking-wider bg-danger-muted px-2 py-0.5 rounded mr-2 border border-danger/10">
+                  Emergency Priority Approval
                 </span>
-                <span className="text-sm font-bold text-gray-800 dark:text-slate-200">
-                  Patient {emg.patientName} (Token: {emg.tokenNumber}) flagged as EMERGENCY walk-in check.
+                <span className="text-xs font-bold text-text-primary leading-tight block sm:inline mt-1 sm:mt-0">
+                  Patient {emg.patientName} (Token: {emg.tokenNumber}) flagged as EMERGENCY check-in.
                 </span>
               </div>
             </div>
-            <button
+            <Button
               onClick={() => approveEmergency(emg.id)}
-              className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow"
+              variant="primary"
+              size="sm"
+              className="bg-danger hover:bg-red-600 hover:shadow-lg hover:shadow-danger/10 border-0"
             >
-              <Check className="w-3.5 h-3.5" /> Approve & Move to Next
-            </button>
+              <Check className="w-3.5 h-3.5" /> Approve & Move Next
+            </Button>
           </div>
         ))}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Column 1 & 2: Active Consultation Panel */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 flex flex-col gap-8">
             
             {activeToken ? (
-              <div className="glass-panel p-6 border-indigo-100 dark:border-slate-800 dark:border-slate-800">
-                <div className="flex justify-between items-center border-b border-gray-100 dark:border-slate-850 pb-4 mb-5">
+              <Card className="flex flex-col gap-6 border-primary/20 bg-bg-surface">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-border-subtle/50 pb-4">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                      Now Serving
-                    </span>
-                    <span className="text-2xl font-black text-gray-800 dark:text-slate-100">{activeToken.tokenNumber}</span>
+                    <Badge variant="primary">Now Serving</Badge>
+                    <span className="text-3xl font-black text-text-primary">{activeToken.tokenNumber}</span>
                   </div>
                   
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={handleSkip}
-                      className="px-3 py-1.5 rounded-lg border border-gray-250 dark:border-slate-800 text-xs font-bold text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center gap-1"
+                      variant="outline"
+                      size="sm"
+                      isLoading={actionLoading}
                     >
-                      <SkipForward className="w-3.5 h-3.5" /> Skip
-                    </button>
-                    <button
+                      <SkipForward className="w-3.5 h-3.5 text-text-muted" /> Skip
+                    </Button>
+                    <Button
                       onClick={handleRecall}
-                      className="px-3 py-1.5 rounded-lg border border-gray-250 dark:border-slate-800 text-xs font-bold text-gray-500 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center gap-1"
+                      variant="outline"
+                      size="sm"
+                      isLoading={actionLoading}
                     >
-                      <HelpCircle className="w-3.5 h-3.5" /> Recall Token
-                    </button>
+                      <HelpCircle className="w-3.5 h-3.5 text-text-muted" /> Recall
+                    </Button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                  <div className="p-3.5 rounded-xl border border-gray-150 dark:border-slate-800 bg-slate-50/20">
-                    <div className="text-[10px] text-gray-400 uppercase font-semibold">Patient Name</div>
-                    <div className="text-sm font-bold text-gray-800 dark:text-slate-100 mt-1">{activeToken.patientName}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-3.5 rounded-xl border border-border-subtle bg-bg-muted/10">
+                    <span className="text-[10px] text-text-muted font-bold uppercase">Patient Name</span>
+                    <div className="text-xs font-bold text-text-primary mt-1">{activeToken.patientName}</div>
                   </div>
-                  <div className="p-3.5 rounded-xl border border-gray-150 dark:border-slate-800 bg-slate-50/20">
-                    <div className="text-[10px] text-gray-400 uppercase font-semibold">Demographics</div>
-                    <div className="text-sm font-bold text-gray-800 dark:text-slate-100 mt-1">
-                      {activeToken.patientAge} years • {activeToken.patientGender}
+                  <div className="p-3.5 rounded-xl border border-border-subtle bg-bg-muted/10">
+                    <span className="text-[10px] text-text-muted font-bold uppercase">Demographics</span>
+                    <div className="text-xs font-bold text-text-primary mt-1">
+                      {activeToken.patientAge} yrs • {activeToken.patientGender}
                     </div>
                   </div>
-                  <div className="p-3.5 rounded-xl border border-gray-150 dark:border-slate-800 bg-slate-50/20">
-                    <div className="text-[10px] text-gray-400 uppercase font-semibold">Reason for Visit</div>
-                    <div className="text-sm font-bold text-gray-800 dark:text-slate-100 mt-1 truncate" title={activeToken.reason}>
+                  <div className="p-3.5 rounded-xl border border-border-subtle bg-bg-muted/10 truncate">
+                    <span className="text-[10px] text-text-muted font-bold uppercase">Reason for Visit</span>
+                    <div className="text-xs font-bold text-text-primary mt-1 truncate" title={activeToken.reason}>
                       {activeToken.reason}
                     </div>
                   </div>
                 </div>
 
                 {/* Consultation Records / Form */}
-                <form onSubmit={handleComplete} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-400 mb-1.5">Diagnosis / Medical Condition</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Mild respiratory congestion, elevated cardiac risk..."
-                      value={diagnosis}
-                      onChange={(e) => setDiagnosis(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                <form onSubmit={handleComplete} className="flex flex-col gap-4">
+                  <Input
+                    label="Diagnosis / Medical Condition"
+                    required
+                    placeholder="e.g. Mild hypertension, seasonal allergic rhinitis..."
+                    value={diagnosis}
+                    onChange={(e) => setDiagnosis(e.target.value)}
+                  />
 
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-400 mb-1.5">Prescribed Medications (comma-separated)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Amoxicillin 500mg (3x daily), Acetaminophen as needed..."
-                      value={prescription}
-                      onChange={(e) => setPrescription(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                  <Input
+                    label="Prescribed Medicines (comma-separated)"
+                    placeholder="e.g. Amoxicillin 500mg, Cetirizine 10mg..."
+                    value={prescription}
+                    onChange={(e) => setPrescription(e.target.value)}
+                  />
 
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-gray-400 mb-1.5">Consultation Notes / Advising</label>
-                    <textarea
-                      rows={3}
-                      placeholder="Enter follow-up instructions, therapy options, exercise suggestions..."
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-250 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                  <Textarea
+                    label="Consultation Notes & Advising"
+                    rows={4}
+                    placeholder="Enter follow-up schedules, therapeutic advice, dietary restrictions..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
 
-                  <button
+                  <Button
                     type="submit"
-                    className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition"
+                    variant="primary"
+                    className="w-full mt-2"
+                    isLoading={actionLoading}
                   >
                     Complete Consultation & Call Next
-                  </button>
+                  </Button>
                 </form>
-              </div>
+              </Card>
             ) : (
-              <div className="glass-panel p-8 text-center border-dashed border-gray-200 dark:border-slate-800">
-                <div className="w-16 h-16 rounded-full bg-indigo-50 dark:bg-slate-850 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-4">
+              <Card className="border-dashed border-border-subtle p-8 text-center flex flex-col items-center justify-center bg-bg-surface/50">
+                <div className="w-16 h-16 rounded-full bg-primary-glow border border-primary/20 text-primary flex items-center justify-center mb-4">
                   <Activity className="w-8 h-8 animate-pulse" />
                 </div>
-                <h3 className="text-lg font-black text-gray-800 dark:text-slate-100">Ready to consult</h3>
-                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 max-w-xs mx-auto mb-6">
-                  There are currently no patients active in your room. Select the button below to retrieve the next patient in queue.
+                <h3 className="text-base font-black text-text-primary">Ready to Consult</h3>
+                <p className="text-xs text-text-muted mt-1 max-w-xs mx-auto mb-6">
+                  There are currently no patients active in your room. Click the button below to fetch the next ticket in queue.
                 </p>
-                <button
+                <Button
                   onClick={handleCallNext}
                   disabled={upcomingQueue.length === 0}
-                  className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/10 hover:shadow-lg disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:text-gray-450 transition"
+                  variant="primary"
+                  isLoading={actionLoading}
                 >
                   Call Next Patient
-                </button>
-              </div>
+                </Button>
+              </Card>
             )}
 
-            {/* Patient medical report folders and history log preview */}
+            {/* Patient medical reports and historical logs */}
             {activeToken && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* Reports Upload Folder */}
-                <div className="glass-panel p-5">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-indigo-500" /> Patient Medical Folders
+                {/* Patient Reports Folder */}
+                <Card className="flex flex-col gap-4">
+                  <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 border-b border-border-subtle/50 pb-3">
+                    <FileText className="w-4 h-4 text-primary" /> Patient Medical Folders
                   </h3>
                   
                   {reports.filter(r => r.patientId === activeToken.patientId).length === 0 ? (
-                    <div className="text-center py-6 text-xs text-gray-400">No medical reports uploaded</div>
+                    <span className="text-xs text-text-muted py-4 text-center">No reports uploaded.</span>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="flex flex-col gap-3">
                       {reports.filter(r => r.patientId === activeToken.patientId).map((rep) => (
-                        <div key={rep.id} className="p-3 rounded-xl border border-gray-150 dark:border-slate-850 bg-slate-50/40 dark:bg-slate-900/40 flex items-center justify-between">
+                        <div key={rep.id} className="p-3 rounded-xl border border-border-subtle bg-bg-muted/10 flex items-center justify-between gap-3">
                           <div className="truncate pr-2">
-                            <div className="text-xs font-bold text-gray-700 dark:text-slate-200 truncate">{rep.fileName}</div>
-                            <div className="text-[10px] text-gray-400 mt-0.5">{rep.reportType}</div>
+                            <div className="text-xs font-bold text-text-primary truncate">{rep.fileName}</div>
+                            <div className="text-[9px] text-text-muted font-bold uppercase tracking-wider mt-0.5">{rep.reportType}</div>
                           </div>
-                          
-                          <button
+                          <Button
                             onClick={() => setPreviewReport(rep)}
-                            className="p-1 rounded text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 shrink-0"
-                            title="Preview file"
+                            variant="outline"
+                            size="sm"
+                            className="p-1 px-2 text-[10px]"
                           >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                            <Eye className="w-3.5 h-3.5" /> View
+                          </Button>
                         </div>
                       ))}
                     </div>
                   )}
-                </div>
+                </Card>
 
-                {/* Visit History Logs */}
-                <div className="glass-panel p-5">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-                    <History className="w-4 h-4 text-indigo-500" /> Consultation History
+                {/* Consultation History */}
+                <Card className="flex flex-col gap-4">
+                  <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 border-b border-border-subtle/50 pb-3">
+                    <History className="w-4 h-4 text-primary" /> Consultation History
                   </h3>
                   
                   {visits.filter(v => v.patientId === activeToken.patientId).length === 0 ? (
-                    <div className="text-center py-6 text-xs text-gray-400">No previous visits recorded</div>
+                    <span className="text-xs text-text-muted py-4 text-center">No previous visits recorded.</span>
                   ) : (
-                    <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
+                    <div className="flex flex-col gap-3 max-h-60 overflow-y-auto pr-1">
                       {visits.filter(v => v.patientId === activeToken.patientId).map((vis) => (
-                        <div key={vis.id} className="p-2.5 rounded-lg border border-gray-150 dark:border-slate-850 bg-slate-50/20 text-xs">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-bold text-gray-600 dark:text-slate-350">{vis.date}</span>
-                            <span className="text-[10px] text-gray-400">{vis.doctorName}</span>
+                        <div key={vis.id} className="p-3 rounded-xl border border-border-subtle bg-bg-muted/10 text-xs flex flex-col gap-1.5">
+                          <div className="flex justify-between items-center text-[10px] font-bold text-text-muted">
+                            <span>{vis.date}</span>
+                            <span>{vis.doctorName}</span>
                           </div>
-                          <div className="font-semibold text-gray-800 dark:text-slate-250 mt-1">Diagnosis: {vis.diagnosis}</div>
-                          <div className="text-[11px] text-gray-500 mt-0.5">Notes: {vis.notes}</div>
+                          <div className="font-extrabold text-text-primary">Diagnosis: {vis.diagnosis}</div>
+                          <div className="text-[11px] text-text-secondary leading-relaxed">Notes: {vis.notes}</div>
                         </div>
                       ))}
                     </div>
                   )}
-                </div>
+                </Card>
 
               </div>
             )}
 
           </div>
 
-          {/* Column 3: Upcoming Patient Queue & Stats */}
-          <div className="space-y-8">
+          {/* Column 3: Upcoming Queue List & Stats */}
+          <div className="flex flex-col gap-6">
             
-            {/* Quick Room statistics */}
-            <div className="glass-panel p-5 grid grid-cols-2 gap-4">
-              <div className="p-3 bg-slate-50 dark:bg-slate-850/50 rounded-xl text-center border border-gray-150 dark:border-slate-800">
-                <div className="text-[10px] text-gray-400 uppercase font-semibold">Treated Today</div>
-                <div className="text-2xl font-black text-gray-800 dark:text-slate-100 mt-1">{completedCount}</div>
-              </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-850/50 rounded-xl text-center border border-gray-150 dark:border-slate-800">
-                <div className="text-[10px] text-gray-400 uppercase font-semibold">Avg. Wait</div>
-                <div className="text-2xl font-black text-gray-800 dark:text-slate-100 mt-1">{avgWait}m</div>
-              </div>
+            {/* Quick stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="text-center p-4">
+                <span className="text-[10px] text-text-muted font-bold uppercase">Treated Today</span>
+                <div className="text-3xl font-black text-text-primary mt-1">{completedCount}</div>
+              </Card>
+              <Card className="text-center p-4">
+                <span className="text-[10px] text-text-muted font-bold uppercase">Avg. Wait</span>
+                <div className="text-3xl font-black text-text-primary mt-1">{avgWait}m</div>
+              </Card>
             </div>
 
             {/* Upcoming Patient queue cards */}
-            <div className="glass-panel p-6">
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+            <Card className="flex flex-col gap-4">
+              <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider border-b border-border-subtle/50 pb-3">
                 Upcoming Patients Queue ({upcomingQueue.length})
               </h2>
 
               {upcomingQueue.length === 0 ? (
-                <div className="text-center py-8 text-xs text-gray-400">Waiting room is empty</div>
+                <span className="text-xs text-text-muted py-4 text-center">Waiting room is empty.</span>
               ) : (
-                <div className="space-y-3">
+                <div className="flex flex-col gap-3">
                   {upcomingQueue.map((tok, index) => (
-                    <div key={tok.id} className="p-3.5 rounded-xl border border-gray-150 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-900 flex items-center justify-between gap-3">
-                      <div className="truncate">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                    <div 
+                      key={tok.id} 
+                      className="p-3 rounded-xl border border-border-subtle bg-bg-surface flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-primary/20 transition"
+                    >
+                      <div className="truncate w-full sm:w-auto">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge variant="primary" size="sm">
                             {tok.tokenNumber}
-                          </span>
-                          <span className="text-xs font-bold text-gray-700 dark:text-slate-200 truncate">{tok.patientName}</span>
+                          </Badge>
+                          <span className="text-xs font-bold text-text-primary truncate">{tok.patientName}</span>
                         </div>
-                        <div className="text-[10px] text-gray-400 mt-1 truncate">
+                        <div className="text-[9px] text-text-muted font-bold uppercase tracking-wider mt-1 truncate">
                           Est. Wait: {tok.estimatedWait}m • {tok.reason}
                         </div>
                       </div>
 
-                      {index === 0 && (
-                        <button
-                          onClick={handleCallNext}
-                          className="px-2.5 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] shrink-0 shadow-sm"
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {/* Transfer Doctor */}
+                        <select
+                          value={tok.doctorId}
+                          onChange={(e) => transferPatient(tok.id, e.target.value)}
+                          className="text-xs bg-bg-surface border border-border-subtle rounded px-1.5 py-1 text-text-secondary focus:outline-none w-24 max-w-[90px]"
+                          title="Transfer Doctor"
                         >
-                          Call
+                          {doctors
+                            .filter(d => d.clinicId === myDoctor.clinicId)
+                            .map(d => (
+                              <option key={d.id} value={d.id}>
+                                Dr. {d.name.split(' ').pop()}
+                              </option>
+                            ))}
+                        </select>
+
+                        {/* Cancel Token */}
+                        <button
+                          onClick={() => {
+                            if (confirm('Cancel this patient token?')) cancelPatientToken(tok.id);
+                          }}
+                          className="p-1 rounded text-text-secondary hover:text-danger hover:bg-danger-muted/30"
+                          title="Cancel Token"
+                        >
+                          ✕
                         </button>
-                      )}
+
+                        {index === 0 && (
+                          <Button
+                            onClick={handleCallNext}
+                            variant="primary"
+                            size="sm"
+                            className="px-3 py-1.5 text-xs"
+                            isLoading={actionLoading}
+                          >
+                            Call
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </Card>
 
-            {/* AI Patient Wait prediction tool tip */}
-            <div className="p-4 rounded-xl ai-gradient-bg text-white shadow-md relative overflow-hidden">
-              <div className="absolute right-0 bottom-0 translate-x-3 translate-y-3 w-16 h-16 rounded-full bg-white/10 blur-md pointer-events-none" />
-              <div className="flex items-center gap-2 mb-3">
+            {/* AI Assistant Wait Predictor tip */}
+            <div className="p-5 rounded-2xl bg-gradient-to-tr from-primary to-indigo-700 text-white shadow relative overflow-hidden flex flex-col gap-3">
+              <div className="absolute right-0 bottom-0 translate-x-3 translate-y-3 w-16 h-16 bg-white/10 blur-md pointer-events-none rounded-full" />
+              <div className="flex items-center gap-2">
                 <span className="text-base">🤖</span>
-                <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-100">AI wait Prediction</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-100">AI consultation Speed</span>
               </div>
-              <div className="text-sm font-semibold">Dr. {myDoctor.name.split(' ').pop()} consultation speed:</div>
-              <div className="text-2xl font-black mt-1">1.2x Faster Today</div>
-              <p className="text-[10px] text-indigo-100 mt-2.5 leading-relaxed">
-                Our AI model has re-adjusted next 5 patient wait estimates down by -4 mins due to accelerated consult cycles.
+              <div className="text-xs font-semibold">Dr. {myDoctor?.name.split(' ').pop()} consultation speed:</div>
+              <div className="text-3xl font-black tracking-tight">1.2x Faster Today</div>
+              <p className="text-[10px] text-indigo-100 leading-relaxed font-medium">
+                Our model adjusted next 5 patient wait estimates down by -4 mins due to accelerated consult cycles.
               </p>
             </div>
 
@@ -417,57 +533,41 @@ export default function DoctorDashboard() {
 
         </div>
 
-      </main>
+      </div>
 
-      {/* Floating Medical Document Preview Overlay (Lightbox popup) */}
-      {previewReport && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl border border-gray-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-slide-up">
-            <div className="px-5 py-4 border-b border-gray-150 dark:border-slate-850 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900/50">
-              <div>
-                <div className="text-xs text-gray-400 font-bold uppercase">Patient Medical Report Preview</div>
-                <div className="text-sm font-bold mt-0.5 text-gray-800 dark:text-slate-100">{previewReport.fileName}</div>
+      {/* Floating Medical Document Preview Overlay (Lightbox dialog popup) */}
+      <Dialog
+        isOpen={previewReport !== null}
+        onClose={() => setPreviewReport(null)}
+        title={previewReport?.fileName || 'Medical File'}
+        description={previewReport?.reportType}
+        footer={
+          <Button onClick={() => setPreviewReport(null)} variant="primary">
+            Done Reviewing
+          </Button>
+        }
+      >
+        <div className="p-6 h-[320px] bg-bg-muted/20 border border-border-subtle/50 rounded-xl flex flex-col items-center justify-center text-center gap-3">
+          {previewReport?.fileType === 'pdf' ? (
+            <>
+              <FileText className="w-16 h-16 text-primary animate-pulse" />
+              <div className="text-xs font-bold text-text-primary">Simulated Complete Blood Count & Lipid Panel</div>
+              <div className="text-[11px] text-text-secondary leading-relaxed max-w-sm">
+                Cholesterol: 180 mg/dL (Normal) • HbA1c: 5.4% (Normal) • RBC: 4.8 million/uL. Everything is within reference range.
               </div>
-              <button
-                onClick={() => setPreviewReport(null)}
-                className="text-xs font-bold text-gray-400 hover:text-gray-600 dark:hover:text-slate-350 bg-gray-100 dark:bg-slate-800 p-1 px-2.5 rounded-lg"
-              >
-                Close
-              </button>
-            </div>
-            
-            <div className="p-6 h-[320px] bg-slate-100/50 dark:bg-[#060814] flex flex-col items-center justify-center text-center">
-              {previewReport.fileType === 'pdf' ? (
-                <>
-                  <FileText className="w-16 h-16 text-indigo-500 mb-3" />
-                  <div className="text-xs font-semibold text-gray-700 dark:text-slate-200">Simulated blood_panel_march_2026.pdf Document</div>
-                  <div className="text-[11px] text-gray-400 mt-1.5 max-w-sm">
-                    Cholesterol: 180 mg/dL (Normal) • HbA1c: 5.4% (Normal) • RBC: 4.8 million/uL. Everything is within reference range.
-                  </div>
-                </>
-              ) : (
-                <>
-                  <span className="text-6xl mb-3 filter drop-shadow">🩻</span>
-                  <div className="text-xs font-semibold text-gray-700 dark:text-slate-200">Simulated chest_xray_cardio_check.png Image</div>
-                  <div className="text-[11px] text-gray-400 mt-1.5 max-w-sm">
-                    Visual examination displays normal cardiac contours and clean clear lungs. No signs of infection.
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="px-5 py-3 border-t border-gray-150 dark:border-slate-850 flex justify-end gap-2 bg-gray-50/50 dark:bg-slate-900/50">
-              <button
-                onClick={() => setPreviewReport(null)}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
-              >
-                Done Reviewing
-              </button>
-            </div>
-          </div>
+            </>
+          ) : (
+            <>
+              <span className="text-6xl select-none animate-pulse">🩻</span>
+              <div className="text-xs font-bold text-text-primary">Simulated Chest X-Ray Scan Image</div>
+              <div className="text-[11px] text-text-secondary leading-relaxed max-w-sm">
+                Visual examination displays normal cardiac contours and clean clear lungs. No signs of infection.
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </Dialog>
 
-    </div>
+    </DashboardLayout>
   );
 }

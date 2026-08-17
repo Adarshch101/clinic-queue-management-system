@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireRole } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const clinicId = searchParams.get('clinicId') || 'clinic-1';
+    const clinicId = searchParams.get('clinicId');
+
+    if (!clinicId) {
+      return NextResponse.json({ error: 'clinicId is required' }, { status: 400 });
+    }
 
     const tokens = await prisma.queueToken.findMany({
       where: {
@@ -20,7 +25,7 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'asc' },
     });
 
-    const formatted = tokens.map((t: any) => ({
+    const formatted = tokens.map((t) => ({
       id: t.id,
       clinicId: t.clinicId,
       patientId: t.patientId,
@@ -41,18 +46,26 @@ export async function GET(request: Request) {
     }));
 
     return NextResponse.json(formatted);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching queue tokens:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
+  const auth = requireRole(request, ['PATIENT', 'RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN']);
+  if (auth instanceof NextResponse) return auth;
+  const session = auth.session;
+
   try {
     const body = await request.json();
     const { appointmentId, name, age, gender, phone, doctorId, reason, clinicId } = body;
 
-    const activeClinicId = clinicId || 'clinic-1';
+    if (!clinicId) {
+      return NextResponse.json({ error: 'clinicId is required' }, { status: 400 });
+    }
+
+    const activeClinicId = clinicId;
 
     // Scenario 1: Check-in a booked appointment
     if (appointmentId) {
@@ -63,6 +76,14 @@ export async function POST(request: Request) {
 
       if (!appt) {
         return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+      }
+
+      // Patients may only check in their own appointments
+      if (session.role === 'PATIENT') {
+        const patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
+        if (!patient || patient.id !== appt.patientId) {
+          return NextResponse.json({ error: 'You can only check in your own appointment' }, { status: 403 });
+        }
       }
 
       // Update appointment status
@@ -201,8 +222,8 @@ export async function POST(request: Request) {
       reason: token.reason,
       appointmentId: token.appointmentId,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating queue token:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
