@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireClinicAccess } from '@/lib/apiAuth';
+import { requireClinicAccess, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
   const auth = requireClinicAccess(request, ['ADMIN', 'SUPER_ADMIN']);
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     }
 
     // Verify the session is authorized for this clinic
-    if (session.role !== 'SUPER_ADMIN' && session.clinicId && session.clinicId !== clinicId) {
+    if (!sessionHasClinicAccess(session, clinicId)) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
         data: {
           clinicId,
           userId: session.userId,
-          userRole: 'ADMIN',
+          userRole: session.role as 'ADMIN' | 'SUPER_ADMIN',
           action: 'UPDATE_CLINIC_PROFILE',
           details: `Clinic profile details updated by administrator`,
         },

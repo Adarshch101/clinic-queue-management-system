@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import * as React from 'react';
+import { cn } from '@/lib/utils';
 
 export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'text' | 'rect' | 'circle';
@@ -25,7 +26,11 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
   return (
     <div
-      className={`animate-pulse bg-bg-muted border border-border-subtle/50 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-text-primary/5 before:to-transparent ${shapeClass} ${className}`}
+      className={cn(
+        'animate-pulse bg-muted border border-border-subtle/50 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-foreground/5 before:to-transparent',
+        shapeClass,
+        className
+      )}
       style={{
         width: width,
         height: height,
@@ -38,7 +43,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
 export const CardSkeleton: React.FC = () => {
   return (
-    <div className="bg-bg-surface border border-border-subtle shadow-sm rounded-2xl p-6 flex flex-col gap-4">
+    <div className="bg-card border border-border-subtle shadow-sm rounded-2xl p-6 flex flex-col gap-4">
       <Skeleton variant="circle" width={48} height={48} />
       <div className="flex flex-col gap-2">
         <Skeleton variant="text" width="60%" />
@@ -62,4 +67,5 @@ export const TableSkeleton: React.FC = () => {
     </div>
   );
 };
+
 export default Skeleton;

@@ -28,6 +28,33 @@ export async function POST(request: Request) {
       }
       verifiedUserId = user.id;
       verifiedEmail = user.email?.toLowerCase() || verifiedEmail;
+    } else {
+      // PATIENT sync must also be bound to the caller's own identity: verify
+      // via the Supabase access token when present, otherwise via the signed
+      // server-side session cookie.
+      let callerOwnsRequestedId = false;
+      if (accessToken) {
+        const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+        if (!error && user && user.id === userId) {
+          callerOwnsRequestedId = true;
+          verifiedEmail = user.email?.toLowerCase() || verifiedEmail;
+        }
+      } else {
+        const cookieStore = await cookies();
+        const cookieSession = cookieStore.get('q-clinix-session')?.value;
+        const { verifySessionToken } = await import('@/lib/session');
+        const parsed = verifySessionToken(cookieSession);
+        if (parsed && parsed.userId === userId) {
+          callerOwnsRequestedId = true;
+        }
+      }
+
+      if (!callerOwnsRequestedId) {
+        return NextResponse.json(
+          { error: 'Session does not match the account being synced' },
+          { status: 403 }
+        );
+      }
     }
 
     // SUPER_ADMIN is only granted when the verified user's email matches the

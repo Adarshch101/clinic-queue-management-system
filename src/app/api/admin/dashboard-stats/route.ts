@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
   const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Missing clinicId' }, { status: 400 });
     }
 
-    if (session.role !== 'SUPER_ADMIN' && session.clinicId && session.clinicId !== clinicId) {
+    if (!sessionHasClinicAccess(session, clinicId)) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 

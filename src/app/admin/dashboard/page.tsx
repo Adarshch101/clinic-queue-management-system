@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { RoleGuard } from '@/components/guards/RoleGuard';
 import { Card, StatsCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
@@ -250,12 +251,19 @@ export default function AdminDashboard() {
   useEffect(() => {
     const syncTabFromHash = () => {
       const hash = window.location.hash.replace('#', '');
-      if (hash) setActiveTab(hash);
+      if (!hash) return;
+      // The verification reviews tab is SUPER_ADMIN-only; ADMIN is
+      // redirected back to the overview instead of hitting 403s.
+      if (hash === 'reviews' && profile?.role !== 'SUPER_ADMIN') {
+        setActiveTab('overview');
+        return;
+      }
+      setActiveTab(hash);
     };
     syncTabFromHash();
     window.addEventListener('hashchange', syncTabFromHash);
     return () => window.removeEventListener('hashchange', syncTabFromHash);
-  }, []);
+  }, [profile?.role]);
 
   const handleExportCSV = async () => {
     setExportLoading(true);
@@ -550,6 +558,7 @@ export default function AdminDashboard() {
   const waitingCount = queueTokens.filter(t => t.status === 'WAITING').length;
 
   return (
+    <RoleGuard roles={['ADMIN', 'SUPER_ADMIN']}>
     <DashboardLayout>
       <div className="flex flex-col gap-8">
         
@@ -1920,7 +1929,7 @@ export default function AdminDashboard() {
         )}
 
         {/* TAB 12: SUPER ADMIN CLINICS REVIEWS */}
-        {activeTab === 'reviews' && (
+        {activeTab === 'reviews' && profile?.role === 'SUPER_ADMIN' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
             
             {/* Left list: Clinics seeking review */}
@@ -2141,5 +2150,6 @@ export default function AdminDashboard() {
 
       </div>
     </DashboardLayout>
+    </RoleGuard>
   );
 }

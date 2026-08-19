@@ -51,7 +51,7 @@ export const POST = withErrorHandler(async (request: Request) => {
     slotDuration
   } = await request.json();
 
-  if (session.role !== 'SUPER_ADMIN' && session.clinicId && session.clinicId !== clinicId) {
+  if (!sessionHasClinicAccess(session, clinicId || '')) {
     return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
   }
 
@@ -76,7 +76,7 @@ export const POST = withErrorHandler(async (request: Request) => {
     data: {
       clinicId,
       userId: session.userId,
-      userRole: 'ADMIN',
+      userRole: session.role as 'ADMIN' | 'SUPER_ADMIN',
       action: 'UPDATE_CLINIC_SETTINGS',
       details: `Clinic settings updated. Timezone: ${timezone}, TokenPrefix: ${tokenPrefix}`,
     }

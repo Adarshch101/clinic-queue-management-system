@@ -56,12 +56,28 @@ export async function GET(request: Request) {
       },
     });
 
-    // Client-side mapping & sorting based on sortBy
+    // Client-side mapping & sorting based on sortBy.
+    // Doctors are mapped to a DTO so contact details (email/phone) and
+    // the Supabase auth userId are never exposed to anonymous callers.
     const results = clinics.map((c) => {
       const waitTime = c.queueTokens.length * (c.doctors[0]?.averageConsultationTime || 12);
       return {
         ...c,
         waitTime,
+        doctors: c.doctors.map((d) => ({
+          id: d.id,
+          name: d.name,
+          specialization: d.specialization,
+          roomNumber: d.roomNumber,
+          qualification: d.qualification,
+          experience: d.experience,
+          languages: d.languages,
+          bio: d.bio,
+          consultationFee: d.consultationFee,
+          consultationDuration: d.consultationDuration,
+          averageConsultationTime: d.averageConsultationTime,
+          avatarUrl: d.avatarUrl,
+        })),
       };
     });
 

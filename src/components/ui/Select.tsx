@@ -1,6 +1,9 @@
 'use client';
 
-import React, { forwardRef } from 'react';
+import * as React from 'react';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { inputBaseClass } from './Input';
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
@@ -9,39 +12,51 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   options: { value: string; label: string }[];
 }
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, helperText, options, className = '', ...props }, ref) => {
+export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
+  ({ label, error, helperText, options, className = '', id, ...props }, ref) => {
+    const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
     return (
       <div className="w-full flex flex-col gap-1.5">
         {label && (
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-text-muted">
+          <label
+            htmlFor={selectId}
+            className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+          >
             {label}
           </label>
         )}
-        <select
-          ref={ref}
-          className={`w-full px-3.5 py-2.5 rounded-xl border border-border-subtle bg-bg-surface text-text-primary text-sm transition-all focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-primary-glow disabled:opacity-50 disabled:bg-bg-muted ${
-            error ? 'border-danger focus:border-danger focus:ring-danger-muted' : ''
-          } ${className}`}
-          {...props}
-        >
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative w-full">
+          <select
+            ref={ref}
+            id={selectId}
+            aria-invalid={error ? true : undefined}
+            className={cn(
+              inputBaseClass,
+              'appearance-none pr-9 cursor-pointer',
+              error && 'border-danger focus:border-danger focus:ring-danger-muted',
+              className
+            )}
+            {...props}
+          >
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 shrink-0 pointer-events-none" />
+        </div>
         {error ? (
-          <span className="text-[10px] font-semibold text-danger flex items-center gap-1">
+          <span className="text-[10px] font-semibold text-destructive flex items-center gap-1" role="alert">
             ⚠️ {error}
           </span>
         ) : helperText ? (
-          <span className="text-[10px] text-text-muted">{helperText}</span>
+          <span className="text-[10px] text-muted-foreground">{helperText}</span>
         ) : null}
       </div>
     );
   }
 );
-
 Select.displayName = 'Select';
+
 export default Select;

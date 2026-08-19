@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireClinicAccess } from '@/lib/apiAuth';
+import { requireClinicAccess, sessionHasClinicAccess } from '@/lib/apiAuth';
 import { saveUploadFile, deleteUploadFile } from '@/lib/fileStorage';
 
 export async function POST(request: Request) {
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing clinicId, documentType or file' }, { status: 400 });
     }
 
-    if (session.role !== 'SUPER_ADMIN' && session.clinicId && session.clinicId !== clinicId) {
+    if (!sessionHasClinicAccess(session, clinicId)) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
@@ -57,7 +57,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Missing clinicId or documentId' }, { status: 400 });
     }
 
-    if (session.role !== 'SUPER_ADMIN' && session.clinicId && session.clinicId !== clinicId) {
+    if (!sessionHasClinicAccess(session, clinicId)) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 

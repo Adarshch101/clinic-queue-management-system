@@ -21,9 +21,11 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const clinicId = searchParams.get('clinicId');
+    const clinicId = searchParams.get('clinicId') ?? undefined;
 
-    if (!clinicId) {
+    // Staff require a clinic scope; patients get their own appointments
+    // across every clinic they have visited.
+    if (session.role !== 'PATIENT' && !clinicId) {
       return NextResponse.json({ error: 'clinicId is required' }, { status: 400 });
     }
 
@@ -39,7 +41,7 @@ export async function GET(request: Request) {
       if (!patient) return NextResponse.json([]);
 
       appointments = await prisma.appointment.findMany({
-        where: { patientId: patient.id, clinicId },
+        where: { patientId: patient.id },
         include: { doctor: true },
         orderBy: { dateTime: 'asc' },
       });
@@ -152,7 +154,7 @@ export async function POST(request: Request) {
   }
 }
 
-// Handles cancellation
+// Handles cancellation / check-in state transitions
 export async function PATCH(request: Request) {
   const auth = requireAuth(request);
   if (auth instanceof NextResponse) return auth;
@@ -166,6 +168,13 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Missing appointmentId or status' }, { status: 400 });
     }
 
+    // Only transitions to a real AppointmentStatus are permitted; arbitrary
+    // status strings (e.g. COMPLETED) are rejected to protect workflow integrity.
+    const allowedStatuses = ['SCHEDULED', 'CHECKED_IN', 'CANCELLED', 'NO_SHOW'];
+    if (!allowedStatuses.includes(status)) {
+      return NextResponse.json({ error: 'Invalid appointment status transition' }, { status: 400 });
+    }
+
     const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
     if (!appointment) {
       return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
@@ -176,8 +185,12 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
-    // Patients may only cancel their own appointments
+    // Patients may only cancel their own appointments; they may not set any
+    // other workflow status (check-in / no-show are staff responsibilities).
     if (session.role === 'PATIENT') {
+      if (status !== 'CANCELLED') {
+        return NextResponse.json({ error: 'Patients may only cancel their appointments' }, { status: 403 });
+      }
       const patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
       if (!patient || patient.id !== appointment.patientId) {
         return NextResponse.json({ error: 'You can only cancel your own appointment' }, { status: 403 });

@@ -96,6 +96,7 @@ interface AppContextType {
   toggleTheme: () => void;
   triggerVoiceAnnouncement: (text: string) => void;
   fetchQueueData: () => Promise<void>;
+  fetchPatientRecords: (patientId: string) => Promise<void>;
   markNotifAsRead: (notificationId: string) => Promise<void>;
   markAllNotifsAsRead: () => Promise<void>;
   deleteNotif: (notificationId: string) => Promise<void>;
@@ -107,7 +108,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Database States loaded from APIs — all start empty
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [patients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [queueTokens, setQueueTokens] = useState<QueueToken[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
@@ -260,24 +261,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAppointments(appts);
       }
 
-      // 2. Fetch reports (if patient)
+      // 2. Fetch patient's own reports and visits (patients only).
+      // Staff (DOCTOR/ADMIN) fetch a specific patient's records via
+      // fetchPatientRecords when a queue token is active.
       if (currentRole === 'PATIENT') {
         const repRes = await fetch(`/api/reports?userId=${currentUserId}`);
-        if (repRes.ok) {
-          const reps = await repRes.json();
-          setReports(reps);
-        }
+        if (repRes.ok) setReports(await repRes.json());
 
         const visRes = await fetch(`/api/visits?userId=${currentUserId}`);
-        if (visRes.ok) {
-          const viss = await visRes.json();
-          setVisits(viss);
-        }
+        if (visRes.ok) setVisits(await visRes.json());
+      }
+
+      // 3. Admin/super-admin fetch the clinic patient roster for the directory.
+      if (currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN') {
+        const patRes = await fetch(`/api/admin/patients?clinicId=${currentClinicId}`);
+        if (patRes.ok) setPatients(await patRes.json());
       }
     } catch (e) {
       console.error('Error fetching user relative data:', e);
     }
   }, [currentUserId, currentRole, currentClinicId]);
+
+  // Fetch a specific patient's medical reports and visit history.
+  // Used by staff (DOCTOR/ADMIN/SUPER_ADMIN) viewing an active token;
+  // the server scopes the lookup to the session's clinic (fail-closed).
+  const fetchPatientRecords = useCallback(async (patientId: string) => {
+    if (!patientId) return;
+    try {
+      const [repRes, visRes] = await Promise.all([
+        fetch(`/api/reports?patientId=${encodeURIComponent(patientId)}`),
+        fetch(`/api/visits?patientId=${encodeURIComponent(patientId)}`),
+      ]);
+      if (repRes.ok) setReports(await repRes.json());
+      if (visRes.ok) setVisits(await visRes.json());
+    } catch (e) {
+      console.error('Error fetching patient records:', e);
+    }
+  }, []);
 
   // Load initial clinic setup — sync user profile to DB
   useEffect(() => {
@@ -457,7 +477,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const uploadReport = async (file: File, reportType: string, fileType: 'pdf' | 'image') => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('userId', currentUser?.id || '');
     formData.append('reportType', reportType);
     formData.append('fileType', fileType);
 
@@ -848,6 +867,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toggleTheme,
       triggerVoiceAnnouncement,
       fetchQueueData,
+      fetchPatientRecords,
     }}>
       {children}
     </AppContext.Provider>

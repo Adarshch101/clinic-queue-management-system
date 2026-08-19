@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       data: {
         clinicId: 'global-platform',
         userId,
-        userRole: 'ADMIN',
+        userRole: session.role as 'PATIENT' | 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN',
         action: 'CUSTOMIZE_DASHBOARD',
         details: `Widget ${widgetId} customization modified (visible: ${visible}, favorite: ${favorite})`,
       }

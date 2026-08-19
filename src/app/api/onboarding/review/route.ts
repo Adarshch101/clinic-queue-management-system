@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 import { NotificationEngine } from '@/lib/notificationEngine';
 
 export async function POST(request: Request) {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
     // Admins may only SUBMIT their own clinic; approval decisions are SUPER_ADMIN-only
     if (action === 'SUBMIT') {
-      if (session.role !== 'SUPER_ADMIN' && session.clinicId && session.clinicId !== clinicId) {
+      if (!sessionHasClinicAccess(session, clinicId)) {
         return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
       }
     } else if (session.role !== 'SUPER_ADMIN') {

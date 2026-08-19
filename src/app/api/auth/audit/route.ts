@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { Role } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { getSessionFromRequest } from '@/lib/session';
+
+// Pre-authentication events may be logged without a session, but they are
+// forced to the 'anonymous' actor and limited to a strict allowlist so the
+// audit trail cannot be forged with arbitrary roles or clinics.
+const ANONYMOUS_ALLOWLIST = new Set(['FAILED_LOGIN', 'PASSWORD_RESET_REQUEST']);
 
 export async function POST(request: Request) {
   try {
@@ -11,54 +17,48 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    let resolvedClinicId = inputClinicId;
-    let resolvedRole: Role = 'PATIENT';
+    const session = getSessionFromRequest(request);
 
-    // 1. Resolve clinic and role if not supplied
-    if (!resolvedClinicId || resolvedClinicId === 'anonymous') {
-      // Find admin, doctor, or receptionist
-      const admin = await prisma.clinicAdmin.findUnique({ where: { userId } });
-      if (admin) {
-        resolvedClinicId = admin.clinicId;
-        resolvedRole = 'ADMIN';
-      } else {
-        const doc = await prisma.doctor.findUnique({ where: { userId } });
-        if (doc) {
-          resolvedClinicId = doc.clinicId;
-          resolvedRole = 'DOCTOR';
-        } else {
-          const recep = await prisma.receptionist.findUnique({ where: { userId } });
-          if (recep) {
-            resolvedClinicId = recep.clinicId;
-            resolvedRole = 'RECEPTIONIST';
-          }
+    // Authenticated path: the actor is derived server-side from the session.
+    // Client-supplied userId / clinicId are ignored to prevent impersonation.
+    if (session) {
+      let resolvedClinicId = inputClinicId;
+
+      // Only SUPER_ADMIN may attach logs to a clinic they are not scoped to.
+      if (session.role !== 'SUPER_ADMIN') {
+        resolvedClinicId = session.clinicId || inputClinicId;
+        if (session.clinicId && inputClinicId && session.clinicId !== inputClinicId) {
+          return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
         }
       }
-    } else {
-      // Input clinic was specified, resolve role
-      const admin = await prisma.clinicAdmin.findUnique({ where: { userId } });
-      if (admin) resolvedRole = 'ADMIN';
-      else {
-        const doc = await prisma.doctor.findUnique({ where: { userId } });
-        if (doc) resolvedRole = 'DOCTOR';
-        else {
-          const recep = await prisma.receptionist.findUnique({ where: { userId } });
-          if (recep) resolvedRole = 'RECEPTIONIST';
-        }
-      }
+
+      const log = await prisma.auditLog.create({
+        data: {
+          clinicId: resolvedClinicId || 'global',
+          userId: session.userId,
+          userRole: session.role as Role,
+          action,
+          details,
+          ipAddress: request.headers.get('x-forwarded-for') || '127.0.0.1',
+        },
+      });
+
+      return NextResponse.json({ success: true, logId: log.id });
     }
 
-    // If clinic ID still unresolved, skip audit log (no valid clinic to associate with)
-    if (!resolvedClinicId) {
-      return NextResponse.json({ success: true, logId: null, warning: 'No clinic found for audit log' });
+    // Anonymous path: only allow-list actions, forced to 'anonymous' actor.
+    if (!ANONYMOUS_ALLOWLIST.has(action) || userId !== 'anonymous') {
+      return NextResponse.json(
+        { error: 'Authentication is required to write audit entries' },
+        { status: 401 }
+      );
     }
 
-    // Write audit log entry
     const log = await prisma.auditLog.create({
       data: {
-        clinicId: resolvedClinicId,
-        userId,
-        userRole: resolvedRole,
+        clinicId: inputClinicId || 'global',
+        userId: 'anonymous',
+        userRole: 'PATIENT',
         action,
         details,
         ipAddress: request.headers.get('x-forwarded-for') || '127.0.0.1',

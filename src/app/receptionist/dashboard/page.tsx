@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { RoleGuard } from '@/components/guards/RoleGuard';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -100,6 +101,7 @@ export default function ReceptionistDashboard() {
   });
 
   return (
+    <RoleGuard roles={['RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN']}>
     <DashboardLayout>
       <div className="flex flex-col gap-8">
         
@@ -445,5 +447,6 @@ export default function ReceptionistDashboard() {
 
       </div>
     </DashboardLayout>
+    </RoleGuard>
   );
 }

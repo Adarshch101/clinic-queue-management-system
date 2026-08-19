@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 // Per-clinic staff limits: exactly one clinic admin, up to 10 receptionists
 // and 10 doctors. The clinic admin manages these through the staff API.
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing staff profile details' }, { status: 400 });
     }
 
-    if (session.role !== 'SUPER_ADMIN' && session.clinicId && session.clinicId !== clinicId) {
+    if (!sessionHasClinicAccess(session, clinicId)) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       data: {
         clinicId,
         userId: session.userId,
-        userRole: 'ADMIN',
+        userRole: session.role as 'ADMIN' | 'SUPER_ADMIN',
         action: `INVITE_${role}`,
         details: `Invited new ${role}: ${name} (${email})`,
       },
@@ -122,7 +122,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Missing clinicId, staffId, or role' }, { status: 400 });
     }
 
-    if (session.role !== 'SUPER_ADMIN' && session.clinicId && session.clinicId !== clinicId) {
+    if (!sessionHasClinicAccess(session, clinicId)) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
@@ -159,7 +159,7 @@ export async function DELETE(request: Request) {
       data: {
         clinicId,
         userId: session.userId,
-        userRole: 'ADMIN',
+        userRole: session.role as 'ADMIN' | 'SUPER_ADMIN',
         action: `REMOVE_${role}`,
         details: `Removed staff member ${staffId} with role ${role}`,
       },

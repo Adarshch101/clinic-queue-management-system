@@ -25,7 +25,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Clinic not found' }, { status: 404 });
     }
 
-    return NextResponse.json(clinic);
+    // Public DTO: drop doctor contact details and auth userIds.
+    return NextResponse.json({
+      ...clinic,
+      doctors: clinic.doctors.map((d) => ({
+        id: d.id,
+        name: d.name,
+        specialization: d.specialization,
+        roomNumber: d.roomNumber,
+        qualification: d.qualification,
+        experience: d.experience,
+        languages: d.languages,
+        bio: d.bio,
+        consultationFee: d.consultationFee,
+        consultationDuration: d.consultationDuration,
+        averageConsultationTime: d.averageConsultationTime,
+        avatarUrl: d.avatarUrl,
+      })),
+    });
   } catch (error: unknown) {
     console.error('API Clinic Details error:', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { supabase } from '@/lib/supabaseClient';
 import { RateLimiter } from '@/lib/backend/middleware/rateLimiter';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       userId,
+      accessToken,
       clinicName,
       subdomain,
       ownerName,
@@ -30,6 +32,17 @@ export async function POST(request: Request) {
 
     if (!userId || !clinicName || !subdomain || !ownerName || !email) {
       return NextResponse.json({ error: 'Missing required registration parameters' }, { status: 400 });
+    }
+
+    // Verify the caller actually owns the Supabase account they are binding
+    // the ClinicAdmin profile to, preventing profile poisoning.
+    if (accessToken) {
+      const { data, error } = await supabase.auth.getUser(accessToken);
+      if (error || !data.user || data.user.id !== userId) {
+        return NextResponse.json({ error: 'Session does not match the account being registered' }, { status: 403 });
+      }
+    } else {
+      return NextResponse.json({ error: 'An authentication token is required to complete registration' }, { status: 401 });
     }
 
     // Input validation

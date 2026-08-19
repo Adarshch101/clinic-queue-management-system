@@ -46,6 +46,9 @@ export function requireRole(
 /**
  * Requires a session and that the target clinicId (if supplied) matches
  * the session's clinic. SUPER_ADMIN is allowed to act on any clinic.
+ *
+ * Fail-closed: when the session has no clinicId (or no clinicId was supplied)
+ * a non-SUPER_ADMIN is denied rather than silently allowed.
  */
 export function requireClinicAccess(
   request: Request,
@@ -58,7 +61,7 @@ export function requireClinicAccess(
   const { session } = result;
   if (session.role === 'SUPER_ADMIN') return result;
 
-  if (clinicId && session.clinicId && clinicId !== session.clinicId) {
+  if (!sessionHasClinicAccess(session, clinicId)) {
     return forbidden('You do not have access to this clinic');
   }
   return result;

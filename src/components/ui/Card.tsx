@@ -1,42 +1,58 @@
 'use client';
 
-import React from 'react';
+import * as React from 'react';
 import { motion, HTMLMotionProps } from 'framer-motion';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
 
-export interface CardProps extends HTMLMotionProps<'div'> {
+const cardVariants = cva(
+  'transition-all duration-300',
+  {
+    variants: {
+      variant: {
+        default:
+          'bg-bg-surface border border-border-subtle shadow-sm rounded-2xl p-6',
+        glass: 'glass-panel p-6',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+    },
+  }
+);
+
+export interface CardProps
+  extends HTMLMotionProps<'div'>,
+    VariantProps<typeof cardVariants> {
   hoverable?: boolean;
   glass?: boolean;
   children?: React.ReactNode;
 }
 
-export const Card: React.FC<CardProps> = ({
-  children,
-  hoverable = false,
-  glass = false,
-  className = '',
-  ...props
-}) => {
-  const baseClass = glass
-    ? 'glass-panel p-6'
-    : 'bg-bg-surface border border-border-subtle shadow-sm rounded-2xl p-6 transition-all duration-300';
-  const hoverClass = hoverable
-    ? glass
-      ? 'glass-panel-hover hover:-translate-y-1'
-      : 'hover:-translate-y-1 hover:shadow-md hover:border-primary/20'
-    : '';
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ children, hoverable = false, glass = false, variant, className = '', ...props }, ref) => {
+    const resolvedVariant = variant ?? (glass ? 'glass' : 'default');
+    const hoverClass = hoverable
+      ? glass
+        ? 'glass-panel-hover hover:-translate-y-1'
+        : 'hover:-translate-y-1 hover:shadow-md hover:border-primary/20'
+      : '';
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={`${baseClass} ${hoverClass} ${className}`}
-      {...props}
-    >
-      {children}
-    </motion.div>
-  );
-};
+    return (
+      <motion.div
+        ref={ref}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className={cn(cardVariants({ variant: resolvedVariant }), hoverClass, className)}
+        {...props}
+      >
+        {children}
+      </motion.div>
+    );
+  }
+);
+Card.displayName = 'Card';
 
 export interface StatsCardProps {
   label: string;
@@ -56,7 +72,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   className = '',
 }) => {
   return (
-    <Card className={`flex items-center justify-between gap-4 ${className}`}>
+    <Card className={cn('flex items-center justify-between gap-4', className)}>
       <div className="flex flex-col gap-1">
         <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
           {label}
@@ -66,9 +82,10 @@ export const StatsCard: React.FC<StatsCardProps> = ({
         </span>
         {change && (
           <span
-            className={`text-[10px] font-bold mt-1.5 flex items-center gap-0.5 ${
+            className={cn(
+              'text-[10px] font-bold mt-1.5 flex items-center gap-0.5',
               isPositive ? 'text-success' : 'text-danger'
-            }`}
+            )}
           >
             {isPositive ? '↑' : '↓'} {change}
           </span>
@@ -82,4 +99,5 @@ export const StatsCard: React.FC<StatsCardProps> = ({
     </Card>
   );
 };
+
 export default Card;

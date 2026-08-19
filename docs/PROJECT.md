@@ -36,13 +36,16 @@ This document is the master reference for the codebase: architecture, setup, dat
 | Database       | PostgreSQL via **Prisma 7.9.0** + `@prisma/adapter-pg` (driver adapter) |
 | Hosted DB/Auth | Supabase (PostgreSQL + Auth/GoTrue) |
 | Auth Cookies   | Custom HMAC-SHA256 signed session cookie (`q-clinix-session`) |
-| Styling        | Tailwind CSS **v4** (CSS-first `@theme` tokens) + **Material UI (MUI) v9** + Emotion |
+| Styling        | Tailwind CSS **v4** (CSS-first `@theme` tokens) |
+| UI Libraries   | **Material UI (MUI) v9** + **shadcn/ui** (Radix primitives + CVA + tw-animate-css) |
 | Animations     | `framer-motion` |
-| Icons          | `lucide-react` (legacy/custom UI) and `@mui/icons-material` (MUI UI) |
+| Icons          | `lucide-react` (shadcn/custom UI) and `@mui/icons-material` (MUI UI) |
 | Fonts          | `next/font` — Outfit (variable `--font-sans`) |
 | Notifications  | In-app engine (`src/lib/notificationEngine.ts`) + SMTP/Twilio configuration placeholders |
 
 > **Important (MUI v9):** MUI v9 removed the CSS *system props* (`alignItems`, `justifyContent`, `flexWrap`, …) from `Stack` — pass them via `sx`. The project integrates MUI through `src/lib/muiTheme.ts` + `src/components/providers/MuiThemeProvider.tsx`.
+>
+> **UI conventions:** MUI powers the public/auth surfaces (landing, auth screens, public layouts) and is available globally via the root `MuiThemeProvider`. The shadcn/ui kit (`src/components/ui/`) is the standard for dashboards and feature UI. Both share the same CSS-variable palette and coexist visually.
 
 ---
 
@@ -54,7 +57,7 @@ src/
 ├── app/                         # App Router pages
 │   ├── page.tsx                 # Landing / clinic search homepage (MUI)
 │   ├── layout.tsx               # Root layout (fonts + Auth/App/MUI providers)
-│   ├── globals.css              # Tailwind v4 theme tokens (light/dark CSS vars)
+│   ├── globals.css              # Tailwind v4 theme tokens + shadcn design tokens (light/dark CSS vars)
 │   ├── login/ register/ auth/*  # Auth screens (AuthLayout + MUI forms)
 │   ├── clinics/ contact/ about/ # Public pages
 │   ├── queue-status/ tv-display/ # Public queue tracking + waiting-room TV board
@@ -62,9 +65,11 @@ src/
 │   ├── doctor/ receptionist/ patient/ # Role dashboards
 │   └── api/                     # Route handlers (see API Reference)
 ├── components/
+│   ├── guards/                  # RoleGuard (client-side route guard for dashboards)
 │   ├── layout/                  # PublicLayout, AuthLayout, DashboardLayout
 │   ├── providers/               # MuiThemeProvider
-│   ├── ui/                      # Custom shadcn-style kit: Card, Button, Input, Select, Badge, Tabs, Accordion…
+│   ├── ui/                      # shadcn/ui kit: Button, Card, Input, Select, Badge, Tabs,
+│   │                            #   Accordion, Dialog, Avatar, Skeleton, Timeline
 │   └── dashboard/               # Shared dashboard widgets
 ├── features/
 │   ├── auth/                    # AuthContext, authService, LoginForm/RegisterForm, validators
@@ -74,8 +79,9 @@ src/
 └── lib/
     ├── prisma.ts                # Prisma client (adapter-pg)
     ├── session.ts               # Signed cookie session create/verify
-    ├── apiAuth.ts               # requireAuth / requireRole / clinic-access helpers
+    ├── apiAuth.ts               # requireAuth / requireRole / requireClinicAccess / sessionHasClinicAccess
     ├── resolveProfile.ts        # Role + permissions resolution (env super admin)
+    ├── utils.ts                 # cn() helper (clsx + tailwind-merge) for shadcn/ui
     ├── supabaseClient.ts        # Supabase JS client
     ├── analyticsService.ts      # Dashboard analytics aggregation
     ├── notificationEngine.ts    # Notification dispatch engine
@@ -91,6 +97,7 @@ src/
         ├── validators/          # Zod schemas
         ├── websocket/           # wsServer
         └── workers/             # backgroundWorker
+components.json                  # shadcn/ui CLI configuration (new-york style, Tailwind v4)
 prisma/
 ├── schema.prisma                # Full data model
 └── (migrations via prisma.config.ts)
@@ -209,8 +216,20 @@ The Super Admin is **email-designated** (not stored as a DB profile row). `npm r
 
 ### Enforced in three layers
 1. **Route guards** — `src/proxy.ts`: `/receptionist`, `/doctor`, `/patient`, `/admin`, `/admin/super-dashboard` (SUPER_ADMIN only); unauthenticated → `/login`; wrong role → `/auth/denied`.
-2. **API helpers** — `src/lib/apiAuth.ts`: `requireAuth`, `requireRole(allowed)`, `requireClinicAccess`, `requireStaffClinicAccess`, `sessionHasClinicAccess(session, clinicId)` (SUPER_ADMIN may act on any clinic; everyone else only their own).
-3. **Per-clinic limits** — `POST /api/admin/staff` enforces 1 admin / 10 receptionists / 10 doctors per clinic; `DELETE` verifies clinic ownership and blocks removing the last admin.
+2. **Client-side guards** — `src/components/guards/RoleGuard.tsx` wraps every dashboard page and re-checks the role before rendering (unauthenticated → `/login`, wrong role → `/auth/denied`), as defense-in-depth beneath the proxy.
+3. **API helpers** — `src/lib/apiAuth.ts`: `requireAuth`, `requireRole(allowed)`, `requireClinicAccess` (fail-closed), `requireStaffClinicAccess`, `sessionHasClinicAccess(session, clinicId)` (SUPER_ADMIN may act on any clinic; everyone else only their own).
+4. **Per-clinic limits** — `POST /api/admin/staff` enforces 1 admin / 10 receptionists / 10 doctors per clinic; `DELETE` verifies clinic ownership and blocks removing the last admin.
+
+### RBAC hardening applied
+The API layer was audited and hardened so role checks cannot be bypassed:
+
+- **Fail-closed clinic scoping** — every staff/clinical endpoint scopes records with `sessionHasClinicAccess`; the falsy-`clinicId` bypass pattern (`clinicId && session.clinicId && …`) was removed from `requireClinicAccess` and all handlers (`admin/dashboard-stats`, `admin/profile`, `admin/staff`, `clinics/settings`, `onboarding/upload/draft/review`). A user without a clinicId can no longer act on any clinic.
+- **Queue scoping** — `GET /api/queue` returns the full clinic queue only to staff of that clinic; a PATIENT sees their own tokens only. `GET /api/queue/track` keeps aggregate wait info public but returns `patientName` only to the owning patient or clinic staff.
+- **Queue actions matrix** — `POST /api/queue/actions` uses a per-action role matrix (`ACTION_ROLE_MATRIX`). DOCTOR is excluded from operations actions (`reorder`, `transfer`, `cancel`, `toggle-emergency`) and retains clinical actions (`call-next`, `complete`, `skip`, `recall`, `approve-emergency`).
+- **Emergency flag** — the public `POST /api/queue/join` honors `isEmergency` only for authenticated staff of the clinic; anonymous self-flagging is ignored, and the doctor is cross-validated to belong to the clinic being joined.
+- **Ownership verification** — resources resolved from the signed session rather than client-supplied IDs: `/api/auth/session` requires a matching cookie or Supabase Bearer token for the target `userId`; `/api/auth/audit` derives the actor from the session; `/api/appointments`/`/api/reports`/`/api/visits` force patients to their own records; registration/sync routes verify the Supabase `accessToken`'s `user.id` equals the requested `userId`.
+- **PHI redaction** — `/api/visits` strips diagnosis/prescription/notes for RECEPTIONIST; `/api/reports` excludes RECEPTIONIST entirely (PATIENT/DOCTOR/ADMIN/SUPER_ADMIN); the public clinic directory (`/api/clinics/search`, `/api/clinics/details`) drops doctor email/phone/auth-`userId`.
+- **Appointment status** — `PATCH /api/appointments` validates statuses against the real enum; PATIENT can only cancel their own appointment.
 
 ---
 
@@ -255,41 +274,43 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 ### Auth
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/api/auth/register` | — | Clinic registration → pending review |
+| POST | `/api/auth/register` | — | Clinic registration → pending review (verifies Supabase token ownership) |
+| POST | `/api/auth/register-patient` | — | Patient registration (verifies Supabase token ownership) |
 | POST | `/api/auth/login-fallback` | — | Passwordless dev fallback (rate-limited, dev only) |
-| POST | `/api/auth/set-session` | — | Issue signed session cookie after Supabase sign-in |
-| GET | `/api/auth/session` | ✓ | Resolve current session/profile by userId+email |
+| POST | `/api/auth/set-session` | — | Issue signed session cookie after Supabase sign-in (verifies token) |
+| GET | `/api/auth/session` | ✓ | Resolve current session/profile — requires cookie **or** Supabase Bearer matching the target `userId` |
 | GET | `/api/auth/me` | ✓ | Current user profile |
-| POST | `/api/auth/sync` | ✓ | Bind Supabase user → profile row (role-match guard) |
+| POST | `/api/auth/sync` | ✓ | Bind Supabase user → profile row (role-match guard; access-token verified) |
 | POST | `/api/auth/signout` | ✓ | Clear session + audit logout |
-| POST | `/api/auth/audit` | ✓ | Write audit log |
+| POST | `/api/auth/audit` | ✓ | Write audit log — actor derived from session; anonymous only for `FAILED_LOGIN`/`PASSWORD_RESET_REQUEST` |
 
 ### Clinics & Onboarding
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/clinics/search` | — | Public clinic search (query/location/pincode/openNow/hasQueue/type/sort) |
-| GET | `/api/clinics/details` | — | Public clinic detail |
-| GET/POST | `/api/clinics/settings` | ADMIN/SUPER | Clinic operational settings |
-| GET/POST | `/api/onboarding/draft` | — | Save/load registration draft |
-| POST | `/api/onboarding/upload` | — | Upload verification documents (DELETE too) |
+| GET | `/api/clinics/search` | — | Public clinic search — doctor contact details (email/phone/userId) redacted |
+| GET | `/api/clinics/details` | — | Public clinic detail — same doctor DTO redaction |
+| GET/POST | `/api/clinics/settings` | ADMIN/SUPER | Clinic operational settings (fail-closed clinic scope) |
+| GET/POST | `/api/onboarding/draft` | ADMIN/SUPER | Save/load registration draft (fail-closed clinic scope) |
+| POST/DELETE | `/api/onboarding/upload` | ADMIN/SUPER | Upload/delete verification documents (fail-closed clinic scope) |
 | GET | `/api/onboarding/pending-list` | SUPER | Pending verification requests |
-| POST | `/api/onboarding/review` | SUPER | Approve/reject/request-changes |
+| POST | `/api/onboarding/review` | SUPER | Approve/reject/request-changes (SUBMIT also allows ADMIN for their own clinic) |
 
 ### Queue
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET/POST | `/api/queue` | ✓ | List queue by clinic / create token |
-| POST | `/api/queue/join` | — | Public online check-in (walk-in/join) |
-| GET | `/api/queue/track` | — | Public token tracking |
-| POST | `/api/queue/actions` | STAFF | Call next / start / complete / transfer / emergency / skip (audited) |
-| POST | `/api/queue/cancel` | — | Cancel a token |
+| GET | `/api/queue` | ✓ | List queue — staff see their clinic's full queue; PATIENT sees own tokens only |
+| POST | `/api/queue` | ✓ | Create token (walk-in registration is staff-only; PATIENT limited to own appointment check-in) |
+| POST | `/api/queue/join` | — | Public online check-in — `isEmergency` honored only for authenticated staff of that clinic; doctor cross-validated against the clinic |
+| GET | `/api/queue/track` | — | Public token tracking — `patientName` only for owner or clinic staff |
+| POST | `/api/queue/actions` | STAFF | Call next / start / complete / transfer / emergency / skip (per-action `ACTION_ROLE_MATRIX`, audited) |
+| POST | `/api/queue/cancel` | STAFF/owner | Cancel a token (staff of clinic, or the owning patient) |
 
 ### Appointments, Patients, Reports
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET/POST/PATCH | `/api/appointments` | ✓ | Bookings, checked-in status |
-| GET | `/api/visits` | ✓ | Patient visit history |
-| GET/POST/DELETE | `/api/reports` | ✓ | Medical reports |
+| GET/POST/PATCH | `/api/appointments` | ✓ | Bookings, checked-in status; PATCH status allowlisted; PATIENT can only cancel own |
+| GET | `/api/visits` | ✓ | Patient visit history — RECEPTIONIST sees visit metadata only (no diagnosis/prescriptions/notes) |
+| GET/POST/DELETE | `/api/reports` | ✓ | Medical reports — PATIENT/DOCTOR/ADMIN/SUPER_ADMIN (RECEPTIONIST excluded); patients forced to own records |
 
 ### Admin
 | Method | Path | Auth | Description |
@@ -329,9 +350,11 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 - **Public**: `/` (landing + clinic search + join queue), `/clinics`, `/clinics/[id]`, `/queue-status`, `/tv-display`, `/about`, `/contact`. Rendered in `PublicLayout` (MUI header/drawer/footer).
 - **Auth**: `/login`, `/register` (MUI split-screen `AuthLayout`), `/auth/{pending,rejected,suspended,denied,forgot-password,reset-password,onboarding}`.
 - **Dashboards** (in `DashboardLayout`):
-  - `/admin/dashboard` — Clinic Operational Hub (hash-driven tabs: overview, queue, patients, doctors, staff, clinic, profile, documents, analytics, ai, subscription).
+  - `/admin/dashboard` — Clinic Operational Hub (hash-driven tabs: overview, queue, patients, doctors, staff, clinic, profile, documents, analytics, ai, subscription). The `#reviews` tab is SUPER_ADMIN-only (ADMIN is redirected to overview).
   - `/admin/super-dashboard` — Super Admin Console (grouped sidebar: Tenants / System / Monitoring; clinic deep-dive dropdown + clinic-scoped analytics).
-  - `/doctor/dashboard`, `/receptionist/dashboard`, `/patient/dashboard`, `/queue-status`.
+  - `/doctor/dashboard` — Doctor Suite; transfer/cancel controls hidden unless the user holds `MANAGE_CLINIC` permission (ADMIN/SUPER_ADMIN); loads the active patient's reports/visits on token activation.
+  - `/receptionist/dashboard`, `/patient/dashboard`, `/queue-status`.
+- **Client-side RBAC**: every dashboard page is wrapped in `<RoleGuard roles={…}>` (`src/components/guards/RoleGuard.tsx`), which redirects unauthenticated users to `/login` and wrong-role users to `/auth/denied` while the profile loads.
 - **Sidebar navigation** uses native anchors with URL hashes (`/admin/dashboard#queue`); each dashboard syncs `location.hash` → active tab on load and on `hashchange`. The top tab bars were intentionally removed — sidebar items drive the content.
 
 ---
@@ -339,9 +362,12 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 ## 11. UI & Design System
 
 - **Tailwind v4 tokens** (`src/app/globals.css`): brand palette defined as CSS variables under `:root` (light) and `.dark` (dark), exposed to Tailwind via `@theme`. Key tokens: `--primary: #4f46e5` (indigo), `--bg-base`, `--bg-surface`, `--bg-muted`, `--border-subtle`, `--text-*`, plus semantic `--success/-warning/-danger/-info` and shadow/radius/spacing tokens.
-- **MUI integration**: `src/lib/muiTheme.ts` maps the same brand colors into MUI `lightTheme`/`darkTheme` (rounded 16px shape, Outfit font, component overrides for Button/Card/Paper/TextField/Accordion). `src/components/providers/MuiThemeProvider.tsx` wraps the app with `AppRouterCacheProvider` (`@mui/material-nextjs/v16-appRouter`) + `ThemeProvider` + `CssBaseline`, switching themes based on `useApp().theme`.
-- **Custom shadcn-style kit** (`src/components/ui/`): `Card`, `Button`, `Input`, `Select`, `Badge`, `Tabs`, `Accordion` — used by the legacy dashboards and public widgets (SearchPanel, ClinicCard, JoinQueueDialog, TokenSuccess).
-- **Migration state**: landing, public layout, and auth screens are fully MUI. Dashboards still use the custom kit + Tailwind. The two systems share the same CSS-variable palette, so they coexist visually.
+- **shadcn/ui** (`components.json`, `src/lib/utils.ts`, `src/app/globals.css`):
+  - Configured for Tailwind v4 (new-york style, lucide icons) with the `@custom-variant dark` directive and `tw-animate-css` imported.
+  - shadcn design tokens (`--background`, `--foreground`, `--card`, `--popover`, `--muted`, `--accent`, `--destructive`, `--border`, `--input`, `--ring`, `--radius`) are mapped onto the brand palette and exposed as utilities via an `@theme inline` block (`bg-background`, `text-foreground`, `bg-card`, `bg-muted`, `border-border`, …).
+  - **Component kit** (`src/components/ui/`): `Button` (CVA variants + `asChild` via Radix Slot), `Card`, `Input`/`Textarea`, `Select` (native, shadcn-styled), `Badge` (CVA), `Skeleton`, `Dialog` (Radix Dialog — focus trap/ESC/aria — keeping the legacy `isOpen/onClose/title/footer` API, plus exported primitives `DialogRoot/Content/Header/Title/Description/Footer/Trigger/Close`), `Tabs` (Radix primitives + legacy `SegmentedTabs`), `Accordion` (Radix primitives + legacy `SimpleAccordion`), `Avatar` (Radix Avatar with auto image-error fallback + primitives), `Timeline`.
+- **MUI integration**: `src/lib/muiTheme.ts` maps the same brand colors into MUI `lightTheme`/`darkTheme` (rounded 16px shape, Outfit font, component overrides for Button/Card/Paper/TextField/Accordion). `src/components/providers/MuiThemeProvider.tsx` wraps the whole app in the root layout with `AppRouterCacheProvider` (`@mui/material-nextjs/v16-appRouter`) + `ThemeProvider` + `CssBaseline`, switching themes based on `useApp().theme`.
+- **Which system where**: landing page, public layout, and auth screens are MUI. Dashboards and feature UI use the shadcn kit + Tailwind. Both share the same CSS-variable palette, so they coexist visually. Prefer the shadcn kit for new dashboard UI; reach for MUI for dense data components (tables, date/time pickers, autocomplete) or new public/auth surfaces.
 - **Theme toggle** lives in `PublicLayout` and `DashboardLayout`; user theme preference is persisted via `/api/user/preferences` and managed in `AppContext`.
 
 ---
@@ -350,10 +376,16 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 
 - **Signed sessions** — HMAC-SHA256 (timing-safe compare) session cookie, 24 h TTL, `SESSION_SECRET` required in production.
 - **Security headers** — applied in `next.config.ts` **and** `src/proxy.ts`: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Strict-Transport-Security`, and a strict `Content-Security-Policy`.
-- **Route protection** — `proxy.ts` guards all dashboard routes and the Super Admin console; wrong-role users are sent to `/auth/denied`.
-- **API authorization** — `apiAuth` helpers gate every sensitive handler; clinic-scoped data is double-checked via `sessionHasClinicAccess`.
-- **Rate limiting** — in-memory `RateLimiter` (`src/lib/backend/middleware/rateLimiter.ts`) on sensitive endpoints (e.g. login fallback: 10/15 min).
+- **Route protection** — `proxy.ts` guards all dashboard routes and the Super Admin console; wrong-role users are sent to `/auth/denied`. Each dashboard also self-guards with `RoleGuard` (defense-in-depth).
+- **API authorization** — `apiAuth` helpers gate every sensitive handler; clinic-scoped data is double-checked via `sessionHasClinicAccess` (fail-closed). Ownership is derived from the session or a verified Supabase Bearer token, never from client-supplied IDs.
+- **PHI protection** — clinical data (diagnosis, prescriptions, notes, reports, patient names) is role-scoped and redacted for front-desk roles; the public clinic directory strips doctor contact details.
+- **Rate limiting** — in-memory `RateLimiter` (`src/lib/backend/middleware/rateLimiter.ts`) on sensitive endpoints (login fallback: 10/15 min; queue join: 5/min; registration: 10/hr).
 - **Secrets** — `.env` is gitignored; `.env.example` documents placeholders only; SMTP/Twilio/API keys are stored obfuscated in `IntegrationConfig`/`ApiKey` tables.
+
+### Known residual risks (accepted)
+- `POST /api/auth/login-fallback` is a passwordless dev-only backdoor — hard-disabled in production and without `ENABLE_LOGIN_FALLBACK="true"`; remove it entirely before any shared deployment.
+- Uploaded medical documents are stored under `public/uploads/` and their bytes are fetchable by URL (the API gates the *listing* only). Move uploads outside `public/` and serve via an authenticated handler to fully close this.
+- `POST /api/auth/sync` auto-seeds a new PATIENT to the first clinic in the database (data-integrity caveat; not a privilege issue).
 
 ---
 
@@ -383,7 +415,12 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 - **MUI v9 `Stack`**: system props must live under `sx` (see §1).
 - **Dashboards are hash-driven**: sidebar links are native anchors (`…/dashboard#tab`); every dashboard syncs the hash to its active tab. Don't reintroduce a `Tabs` strip unless the sidebar is removed too.
 - **Super Admin is email-designated** — there is no DB row for it; changing `SUPER_ADMIN_EMAIL` without re-seeding/creating the Auth user breaks that login.
-- **Login fallback** returns 403 unless `ENABLE_LOGIN_FALLBACK="true"` and `NODE_ENV !== 'production'`.
+- **Login fallback** returns 403 unless `ENABLE_LOGIN_FALLBACK="true"` and `NODE_ENV !== 'production'`. It remains a dev-only credential bypass — remove it before any shared deployment.
+- **Uploads are served from `public/uploads`** — the bytes are fetchable by URL even though the API gates listing. Move outside `public/` behind an authenticated handler before production.
+- **`/api/auth/sync` PATIENT auto-seed** binds a newly registered patient to the first clinic in the DB (they never chose it). Follow `register-patient` and leave `clinicId` null until the patient selects a clinic.
+- **Public TV display** (`/tv-display`) requires a staff session because the underlying queue endpoint is now staff-scoped.
+- **shadcn/ui tokens** — the shadcn utilities (`bg-card`, `text-foreground`, `bg-muted`, …) resolve via the `@theme inline` block in `globals.css`; do not add a second `@theme` definition with the same key (Tailwind v4 rejects duplicate theme variables).
+- **Radix/legacy dual exports** — `Dialog`, `Tabs`, `Accordion`, `Avatar` export both the shadcn primitives and a legacy composite (e.g. `SegmentedTabs`, `SimpleAccordion`, `CompositeDialog`). New code should use the shadcn primitives.
 
 ---
 

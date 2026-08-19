@@ -2,6 +2,26 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole, sessionHasClinicAccess, type SessionPayload } from '@/lib/apiAuth';
 
+// Which queue actions each role may perform. Clinical actions are reserved
+// for DOCTOR/ADMIN; operations (reorder, transfer, cancel, emergency toggles)
+// are restricted to reception/administration staff. Cross-checks against the
+// session role before any mutation.
+const ACTION_ROLE_MATRIX: Record<string, ('RECEPTIONIST' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN')[]> = {
+  'call-next': ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  complete: ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  skip: ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  recall: ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  reorder: ['RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN'],
+  'toggle-emergency': ['RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN'],
+  'approve-emergency': ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'pause-queue': ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'resume-queue': ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'add-delay': ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'call-previous': ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  transfer: ['RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN'],
+  cancel: ['RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN'],
+};
+
 export async function POST(request: Request) {
   const auth = requireRole(request, ['RECEPTIONIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
@@ -42,6 +62,18 @@ export async function POST(request: Request) {
 
     if (!action) {
       return NextResponse.json({ error: 'Action parameter is required' }, { status: 400 });
+    }
+
+    // Enforce the per-action role matrix before touching any data.
+    const allowedRoles = ACTION_ROLE_MATRIX[action];
+    if (!allowedRoles) {
+      return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });
+    }
+    if (!allowedRoles.includes(session.role as 'RECEPTIONIST' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN')) {
+      return NextResponse.json(
+        { error: 'You do not have permission to perform this action' },
+        { status: 403 }
+      );
     }
 
     // --- Action 1: Call Next Patient ---

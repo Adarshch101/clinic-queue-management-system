@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { withErrorHandler } from '@/lib/backend/errors/errorHandler';
 import { RateLimiter } from '@/lib/backend/middleware/rateLimiter';
 import { AppError } from '@/lib/backend/errors/AppError';
+import { getSessionFromRequest } from '@/lib/session';
+import { sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export const POST = withErrorHandler(async (request: Request) => {
   // 1. Enforce rate limiting on queue join actions (e.g. 5 calls per minute max from an IP)
@@ -53,6 +55,17 @@ export const POST = withErrorHandler(async (request: Request) => {
   if (!doctor) {
     throw new AppError('Doctor not found', 404);
   }
+  // Cross-clinic check: the doctor must belong to the clinic being joined.
+  if (doctor.clinicId !== clinicId) {
+    throw new AppError('Doctor does not belong to this clinic', 400);
+  }
+
+  // Emergency flag is only honored for authenticated staff of this clinic.
+  // Anonymous self-flagging is ignored (prevents public queue-jumping).
+  const session = getSessionFromRequest(request);
+  const staffAuthorized =
+    !!session && session.role !== 'PATIENT' && sessionHasClinicAccess(session, clinicId);
+  const isStaffEmergency = staffAuthorized && isEmergency === true;
 
   // 3. Count wait position
   const waitingCount = await prisma.queueToken.count({
@@ -82,8 +95,8 @@ export const POST = withErrorHandler(async (request: Request) => {
       status: 'WAITING',
       estimatedWait: waitTime,
       reason: reason || 'General checkup',
-      isEmergency: isEmergency || false,
-      priority: isEmergency ? 1000 : 0,
+      isEmergency: isStaffEmergency,
+      priority: isStaffEmergency ? 1000 : 0,
     },
   });
 
@@ -110,7 +123,7 @@ export const POST = withErrorHandler(async (request: Request) => {
       patientId: patient.id,
       doctorId,
       tokenNumber,
-      isEmergency: isEmergency || false
+      isEmergency: isStaffEmergency
     });
   } catch (err) {
     console.error('Error tracking analytics event:', err);

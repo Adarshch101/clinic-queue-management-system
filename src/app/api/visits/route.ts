@@ -42,16 +42,28 @@ export async function GET(request: Request) {
       orderBy: { visitDate: 'desc' },
     });
 
-    const formatted = visits.map((v) => ({
-      id: v.id,
-      patientId: v.patientId,
-      patientName: v.patient?.name || 'Patient',
-      doctorName: v.doctor?.name || 'Dr. Physician',
-      date: v.visitDate.toISOString().split('T')[0],
-      diagnosis: v.diagnosis,
-      prescription: v.prescriptions.split(',').map((p: string) => p.trim()).filter(Boolean),
-      notes: v.notes,
-    }));
+    const formatted = visits.map((v) => {
+      // Front-desk staff do not need full clinical PHI; they only see that a
+      // visit occurred. Diagnosis/prescriptions/notes are restricted to the
+      // patient themselves and clinical roles (DOCTOR/ADMIN/SUPER_ADMIN).
+      const isClinicalViewer = session.role !== 'RECEPTIONIST';
+
+      const base: Record<string, unknown> = {
+        id: v.id,
+        patientId: v.patientId,
+        patientName: v.patient?.name || 'Patient',
+        doctorName: v.doctor?.name || 'Dr. Physician',
+        date: v.visitDate.toISOString().split('T')[0],
+      };
+
+      if (isClinicalViewer) {
+        base.diagnosis = v.diagnosis;
+        base.prescription = v.prescriptions.split(',').map((p: string) => p.trim()).filter(Boolean);
+        base.notes = v.notes;
+      }
+
+      return base;
+    });
 
     return NextResponse.json(formatted);
   } catch (error) {

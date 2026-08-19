@@ -1,7 +1,11 @@
 'use client';
 
-import React, { forwardRef } from 'react';
+import * as React from 'react';
 import { Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+export const inputBaseClass =
+  'flex w-full rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-all focus-visible:outline-none focus-visible:border-border-focus focus-visible:ring-2 focus-visible:ring-primary-glow disabled:opacity-50 disabled:bg-muted aria-invalid:border-destructive aria-invalid:ring-destructive/20';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -10,39 +14,47 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   isSearch?: boolean;
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helperText, isSearch, className = '', ...props }, ref) => {
+export const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ label, error, helperText, isSearch, className = '', id, ...props }, ref) => {
+    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
     return (
       <div className="w-full flex flex-col gap-1.5">
         {label && (
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-text-muted">
+          <label
+            htmlFor={inputId}
+            className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+          >
             {label}
           </label>
         )}
         <div className="relative w-full">
           {isSearch && (
-            <Search className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2 shrink-0 pointer-events-none" />
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 shrink-0 pointer-events-none" />
           )}
           <input
             ref={ref}
-            className={`w-full px-3.5 py-2.5 rounded-xl border border-border-subtle bg-bg-surface text-text-primary placeholder:text-text-muted text-sm transition-all focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-primary-glow disabled:opacity-50 disabled:bg-bg-muted ${
-              isSearch ? 'pl-9' : ''
-            } ${error ? 'border-danger focus:border-danger focus:ring-danger-muted' : ''} ${className}`}
+            id={inputId}
+            aria-invalid={error ? true : undefined}
+            className={cn(
+              inputBaseClass,
+              isSearch && 'pl-9',
+              error && 'border-danger focus:border-danger focus:ring-danger-muted',
+              className
+            )}
             {...props}
           />
         </div>
         {error ? (
-          <span className="text-[10px] font-semibold text-danger flex items-center gap-1">
+          <span className="text-[10px] font-semibold text-destructive flex items-center gap-1" role="alert">
             ⚠️ {error}
           </span>
         ) : helperText ? (
-          <span className="text-[10px] text-text-muted">{helperText}</span>
+          <span className="text-[10px] text-muted-foreground">{helperText}</span>
         ) : null}
       </div>
     );
   }
 );
-
 Input.displayName = 'Input';
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -51,33 +63,42 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
   helperText?: string;
 }
 
-export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ label, error, helperText, className = '', ...props }, ref) => {
+export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ label, error, helperText, className = '', id, ...props }, ref) => {
+    const textareaId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
     return (
       <div className="w-full flex flex-col gap-1.5">
         {label && (
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-text-muted">
+          <label
+            htmlFor={textareaId}
+            className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+          >
             {label}
           </label>
         )}
         <textarea
           ref={ref}
-          className={`w-full px-3.5 py-2.5 rounded-xl border border-border-subtle bg-bg-surface text-text-primary placeholder:text-text-muted text-sm transition-all focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-primary-glow disabled:opacity-50 disabled:bg-bg-muted ${
-            error ? 'border-danger focus:border-danger focus:ring-danger-muted' : ''
-          } ${className}`}
+          id={textareaId}
+          aria-invalid={error ? true : undefined}
+          className={cn(
+            inputBaseClass,
+            'min-h-[80px]',
+            error && 'border-danger focus:border-danger focus:ring-danger-muted',
+            className
+          )}
           {...props}
         />
         {error ? (
-          <span className="text-[10px] font-semibold text-danger flex items-center gap-1">
+          <span className="text-[10px] font-semibold text-destructive flex items-center gap-1" role="alert">
             ⚠️ {error}
           </span>
         ) : helperText ? (
-          <span className="text-[10px] text-text-muted">{helperText}</span>
+          <span className="text-[10px] text-muted-foreground">{helperText}</span>
         ) : null}
       </div>
     );
   }
 );
-
 Textarea.displayName = 'Textarea';
+
 export default Input;

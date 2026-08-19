@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import * as React from 'react';
 import { CheckCircle2, Clock, PlayCircle, HelpCircle, ShieldAlert } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface TimelineStep {
   title: string;
@@ -24,9 +25,9 @@ export const Timeline: React.FC<TimelineProps> = ({ steps }) => {
       case 'warning':
         return <ShieldAlert className="w-5 h-5 text-warning animate-bounce" />;
       case 'skipped':
-        return <HelpCircle className="w-5 h-5 text-text-muted" />;
+        return <HelpCircle className="w-5 h-5 text-muted-foreground" />;
       default:
-        return <Clock className="w-5 h-5 text-text-muted" />;
+        return <Clock className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
@@ -54,7 +55,7 @@ export const Timeline: React.FC<TimelineProps> = ({ steps }) => {
               <div className="z-10 bg-bg-base p-0.5 rounded-full">{getIcon(step.status)}</div>
               {!isLast && (
                 <div
-                  className={`w-0.5 flex-1 my-1.5 rounded-full ${getLineColor(step.status)}`}
+                  className={cn('w-0.5 flex-1 my-1.5 rounded-full', getLineColor(step.status))}
                 />
               )}
             </div>
@@ -63,23 +64,24 @@ export const Timeline: React.FC<TimelineProps> = ({ steps }) => {
             <div className="pb-8 pt-0.5 flex-1">
               <div className="flex justify-between items-start gap-4">
                 <h4
-                  className={`font-bold text-xs ${
+                  className={cn(
+                    'font-bold text-xs',
                     step.status === 'current'
                       ? 'text-primary font-black'
                       : step.status === 'completed'
-                      ? 'text-text-primary'
-                      : 'text-text-secondary'
-                  }`}
+                      ? 'text-foreground'
+                      : 'text-secondary-foreground'
+                  )}
                 >
                   {step.title}
                 </h4>
                 {step.time && (
-                  <span className="text-[10px] font-semibold text-text-muted uppercase">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase">
                     {step.time}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-text-secondary mt-1 max-w-md leading-relaxed">
+              <p className="text-xs text-secondary-foreground mt-1 max-w-md leading-relaxed">
                 {step.description}
               </p>
             </div>
@@ -89,4 +91,5 @@ export const Timeline: React.FC<TimelineProps> = ({ steps }) => {
     </div>
   );
 };
+
 export default Timeline;

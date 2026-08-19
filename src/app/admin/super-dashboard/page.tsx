@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { RoleGuard } from '@/components/guards/RoleGuard';
 import { Card, StatsCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
@@ -530,18 +531,21 @@ export default function SuperAdminDashboard() {
 
   if (loading) {
     return (
+      <RoleGuard roles={['SUPER_ADMIN']}>
       <DashboardLayout>
         <div className="flex flex-col gap-6 justify-center items-center h-64 text-xs font-bold text-text-muted animate-pulse">
           <Activity className="w-8 h-8 text-primary animate-spin" />
           <span>Synchronizing Central Governance Ledger...</span>
         </div>
       </DashboardLayout>
+      </RoleGuard>
     );
   }
 
   const { stats, clinics, featureFlags, platformSettings, announcements, auditLogs } = adminData!;
 
   return (
+    <RoleGuard roles={['SUPER_ADMIN']}>
     <DashboardLayout>
       <div className="flex flex-col gap-8">
         
@@ -1677,5 +1681,6 @@ export default function SuperAdminDashboard() {
 
       </div>
     </DashboardLayout>
+    </RoleGuard>
   );
 }

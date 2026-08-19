@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { RoleGuard } from '@/components/guards/RoleGuard';
 import { Card, StatsCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -39,10 +40,11 @@ export default function PatientDashboard() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
 
-  // Filter current patient's data
-  const myAppointments = appointments.filter(a => a.patientId === currentUser?.id);
+  // The appointments and queue APIs already scope results to the signed-in
+  // patient by their record id, so no client-side patientId match is needed.
+  const myAppointments = appointments;
   const myActiveToken = queueTokens.find(
-    t => t.patientId === currentUser?.id && ['WAITING', 'CALLED', 'IN_CONSULTATION'].includes(t.status)
+    t => ['WAITING', 'CALLED', 'IN_CONSULTATION'].includes(t.status)
   );
   
   // Calculate how many patients are ahead in line
@@ -105,6 +107,7 @@ export default function PatientDashboard() {
   };
 
   return (
+    <RoleGuard roles={['PATIENT']}>
     <DashboardLayout>
       <div className="flex flex-col gap-8">
         
@@ -371,5 +374,6 @@ export default function PatientDashboard() {
 
       </div>
     </DashboardLayout>
+    </RoleGuard>
   );
 }

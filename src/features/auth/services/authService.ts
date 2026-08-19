@@ -31,12 +31,22 @@ export const authService = {
     if (!authData.user) throw new Error('No user returned');
     const userId = authData.user.id;
 
-    // 2. Call register-patient API to write patient profile to PostgreSQL
+    // 2. Establish a session first so the server can verify account ownership
+    //    when binding the patient profile (closes profile-poisoning).
+    const { data: { session }, error: loginError } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+    if (loginError) throw loginError;
+    const accessToken = session?.access_token;
+
+    // 3. Call register-patient API to write patient profile to PostgreSQL
     const res = await fetch('/api/auth/register-patient', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId,
+        accessToken,
         name: data.name,
         email: data.email,
         phone: data.phone,
@@ -52,13 +62,7 @@ export const authService = {
 
     const resData = await res.json();
 
-    // 3. Auto-login after successful registration
-    const { data: { session }, error: loginError } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    });
-
-    if (loginError) throw loginError;
+    // 4. Auto-login after successful registration
     if (session?.access_token) {
       await fetch('/api/auth/set-session', {
         method: 'POST',
@@ -112,12 +116,22 @@ export const authService = {
     if (!authData.user) throw new Error('No user returned');
     const userId = authData.user.id;
 
-    // 2. Call register API to write clinic and default admin profile to PostgreSQL
+    // 2. Establish a session first so the server can verify account ownership
+    //    when binding the ClinicAdmin profile.
+    const { data: { session }, error: sessionError } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+    if (sessionError) throw sessionError;
+    const accessToken = session?.access_token;
+
+    // 3. Call register API to write clinic and default admin profile to PostgreSQL
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId,
+        accessToken,
         ...data,
       }),
     });
@@ -128,7 +142,16 @@ export const authService = {
     }
 
     const resData = await res.json();
-    
+
+    // 4. Mint the signed server-side session cookie for the new admin.
+    if (session?.access_token) {
+      await fetch('/api/auth/set-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: session.access_token }),
+      });
+    }
+
     // Log registration audit event
     await this.logAuditEvent(
       userId,
@@ -202,10 +225,19 @@ export const authService = {
 
   // Get logged-in user profile details and role permissions
   async getCurrentSessionProfile(userId: string, email?: string): Promise<UserSessionProfile> {
-    const url = email 
+    const url = email
       ? `/api/auth/session?userId=${userId}&email=${encodeURIComponent(email)}`
       : `/api/auth/session?userId=${userId}`;
-    const res = await fetch(url);
+
+    // Attach the Supabase access token so the server can verify that the
+    // caller owns the requested profile (prevents profile enumeration).
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    const res = await fetch(url, { headers });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to fetch session profile');

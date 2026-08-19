@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireClinicAccess } from '@/lib/apiAuth';
+import { requireClinicAccess, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
   const auth = requireClinicAccess(request, ['ADMIN', 'SUPER_ADMIN']);
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Missing clinicId' }, { status: 400 });
     }
 
-    if (session.role !== 'SUPER_ADMIN' && session.clinicId && session.clinicId !== clinicId) {
+    if (!sessionHasClinicAccess(session, clinicId)) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing clinicId or stepData' }, { status: 400 });
     }
 
-    if (session.role !== 'SUPER_ADMIN' && session.clinicId && session.clinicId !== clinicId) {
+    if (!sessionHasClinicAccess(session, clinicId)) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 

@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Q-Clinix — Smart AI-Ready Clinic Queue Management System
+
+A multi-tenant, AI-ready clinic queue management SaaS built with **Next.js 16** (App Router), **Prisma 7 + PostgreSQL**, **Supabase Auth**, **Material UI**, and **shadcn/ui**.
+
+Patients find clinics, view live wait times, and join virtual queues from their browser (no account required). Clinic staff manage tokens, consultations, and patients; clinic owners control their workspace; and a platform **Super Admin** governs every tenant.
+
+## Tech Stack
+
+| Layer          | Technology |
+|----------------|------------|
+| Framework      | Next.js 16.2.11 (App Router, Turbopack) |
+| UI Runtime     | React 19 |
+| Language       | TypeScript (strict) |
+| Database       | PostgreSQL via Prisma 7.9 + `@prisma/adapter-pg` |
+| Hosted Auth/DB | Supabase (Auth/GoTrue + PostgreSQL) |
+| Session        | Custom HMAC-SHA256 signed cookie (`q-clinix-session`) |
+| Styling        | Tailwind CSS v4 (CSS-first `@theme` tokens) |
+| UI Libraries   | Material UI (MUI) v9 + shadcn/ui (Radix + CVA) |
+| Animations     | framer-motion |
+| Icons          | lucide-react + @mui/icons-material |
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Configure environment
+cp .env.example .env
+# fill in DATABASE_URL, DIRECT_URL, Supabase URL/anon key,
+# SUPER_ADMIN_EMAIL/PASSWORD, SESSION_SECRET
+
+# 3. Apply the schema and generate the client
+npx prisma db push
+npx prisma generate
+
+# 4. Seed platform settings + create the Super Admin login
+npm run db:seed
+
+# 5. Run the dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# → http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Build / lint / typecheck:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build      # production build
+npm run lint       # ESLint (0 errors; ~16 accepted warnings)
+npx tsc --noEmit   # type check
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+> Windows: run production builds with `$env:NODE_OPTIONS="--max-old-space-size=8192"; npm run build`.
+
+## Documentation
+
+- `docs/PROJECT.md` — master reference: architecture, data model, API reference, RBAC, UI design system, security.
+- `docs/onboarding.md` — developer onboarding & coding standards (incl. shadcn/ui contribution guide).
+- `docs/admin_manual.md` — clinic owner / receptionist / super admin operations.
+- `docs/production_checklist.md` — pre-launch checklist.
+- `docs/disaster_recovery.md` — backup & restore procedures.
+- `docs/future_roadmap.md` — planned features.
+
+## Key Features
+
+- Public clinic directory with live wait-time estimates and queue join/tracking.
+- Role dashboards for PATIENT, RECEPTIONIST, DOCTOR, ADMIN, SUPER_ADMIN with route-level and API-level RBAC (fail-closed clinic scoping).
+- Real-time queue operations: call next, transfer, skip, emergency approval, add delay, pause/resume, complete consultation.
+- Appointments, visit records, medical report uploads, notifications, analytics, and reporting.
+- Clinic onboarding with document upload and Super Admin verification workflow.
+- Super Admin console: tenants, user management, platform flags, audits, backups, global analytics.
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js documentation](https://nextjs.org/docs)
+- [shadcn/ui](https://ui.shadcn.com)
+- [Material UI](https://mui.com)
+- [Prisma](https://www.prisma.io/docs)

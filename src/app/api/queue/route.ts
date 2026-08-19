@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
+import { requireAuth, requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
+  const auth = requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+  const { session } = auth;
+
   try {
     const { searchParams } = new URL(request.url);
     const clinicId = searchParams.get('clinicId');
@@ -11,19 +15,45 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'clinicId is required' }, { status: 400 });
     }
 
-    const tokens = await prisma.queueToken.findMany({
-      where: {
-        clinicId,
-        status: {
-          in: ['WAITING', 'CALLED', 'IN_CONSULTATION', 'COMPLETED', 'SKIPPED'],
+    // Patients may only ever see their own tokens; the full clinic queue
+    // (names, ages, genders, reasons) is staff-only and clinic-scoped.
+    let tokens;
+    if (session.role === 'PATIENT') {
+      const patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
+      if (!patient) return NextResponse.json([]);
+
+      tokens = await prisma.queueToken.findMany({
+        where: {
+          patientId: patient.id,
+          status: {
+            in: ['WAITING', 'CALLED', 'IN_CONSULTATION', 'COMPLETED', 'SKIPPED'],
+          },
         },
-      },
-      include: {
-        patient: true,
-        doctor: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+        include: {
+          patient: true,
+          doctor: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+    } else {
+      if (!sessionHasClinicAccess(session, clinicId)) {
+        return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
+      }
+
+      tokens = await prisma.queueToken.findMany({
+        where: {
+          clinicId,
+          status: {
+            in: ['WAITING', 'CALLED', 'IN_CONSULTATION', 'COMPLETED', 'SKIPPED'],
+          },
+        },
+        include: {
+          patient: true,
+          doctor: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+    }
 
     const formatted = tokens.map((t) => ({
       id: t.id,
@@ -161,6 +191,12 @@ export async function POST(request: Request) {
     }
 
     // Scenario 2: Register a walk-in patient
+    // Walk-in registration is a receptionist/operations function; a PATIENT
+    // role may only ever check in their own booked appointment.
+    if (session.role === 'PATIENT') {
+      return NextResponse.json({ error: 'Only clinic staff can register walk-in patients' }, { status: 403 });
+    }
+
     if (!name || !age || !phone || !doctorId || !reason) {
       return NextResponse.json({ error: 'Missing walk-in details' }, { status: 400 });
     }

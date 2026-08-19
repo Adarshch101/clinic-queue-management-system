@@ -64,7 +64,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = requireRole(request, ['PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN']);
+  const auth = requireRole(request, ['PATIENT', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = requireRole(request, ['PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN', 'SUPER_ADMIN']);
+  const auth = requireRole(request, ['PATIENT', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 

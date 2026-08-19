@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { RoleGuard } from '@/components/guards/RoleGuard';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Dialog } from '@/components/ui/Dialog';
-import type { MedicalReport } from '@/lib/mockData';
+import type { Doctor, MedicalReport } from '@/lib/mockData';
 import { 
   SkipForward, HelpCircle, Pause, Play, 
   Clock, AlertOctagon, Check, Eye, History, FileText, 
@@ -32,11 +34,25 @@ export default function DoctorDashboard() {
     approveEmergency,
     callPrevious,
     transferPatient,
-    cancelPatientToken
+    cancelPatientToken,
+    fetchPatientRecords
   } = useApp();
 
-  // Active doctor details
-  const myDoctor = doctors.find(d => d.id === currentUser?.id) || doctors[0];
+  const { hasPermission } = useAuth();
+
+  // Transfer/cancel are operations functions reserved for clinic managers.
+  const canManageOps = hasPermission('MANAGE_CLINIC');
+
+  // Active doctor details. The signed-in user's Doctor record id differs from
+  // the Supabase auth userId, so resolve it via /api/doctor/me (record id),
+  // fall back to a userId match in the directory, then the first doctor
+  // (admins previewing the page have no Doctor row).
+  const [myDoctorRecord, setMyDoctorRecord] = useState<Doctor | null>(null);
+  const myDoctor =
+    doctors.find(d => d.id === myDoctorRecord?.id) ||
+    myDoctorRecord ||
+    doctors.find(d => d.id === currentUser?.id) ||
+    doctors[0];
   const isPaused = myDoctor?.isActive === 'false';
 
   // State for Consultation Form
@@ -53,6 +69,50 @@ export default function DoctorDashboard() {
   const activeToken = queueTokens.find(
     t => t.doctorId === myDoctor.id && ['CALLED', 'IN_CONSULTATION'].includes(t.status)
   );
+
+  // Load the active patient's medical records when a token becomes active.
+  useEffect(() => {
+    if (activeToken?.patientId) {
+      fetchPatientRecords(activeToken.patientId);
+    }
+  }, [activeToken?.patientId, fetchPatientRecords]);
+
+  // Resolve the signed-in doctor's record id from the session.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/doctor/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me) => {
+        if (cancelled || !me) return;
+        setMyDoctorRecord({
+          id: me.id,
+          clinicId: me.clinicId,
+          name: me.name,
+          specialization: me.specialization,
+          roomNumber: me.roomNumber,
+          email: me.email || '',
+          phone: me.phone || '',
+          avatar: me.avatar || '',
+          workingHours: '',
+          averageConsultationTime: me.averageConsultationTime,
+          isActive: me.isActive,
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!myDoctor) {
+    return (
+      <RoleGuard roles={['DOCTOR', 'ADMIN', 'SUPER_ADMIN']}>
+        <DashboardLayout>
+          <div className="p-8 text-sm text-text-muted">
+            No doctor profile was found for your account. Contact your clinic administrator.
+          </div>
+        </DashboardLayout>
+      </RoleGuard>
+    );
+  }
 
   // Filter queue tokens for upcoming list
   const upcomingQueue = queueTokens
@@ -167,6 +227,7 @@ export default function DoctorDashboard() {
   const avgWait = myDoctor?.averageConsultationTime || 12;
 
   return (
+    <RoleGuard roles={['DOCTOR', 'ADMIN', 'SUPER_ADMIN']}>
     <DashboardLayout>
       <div className="flex flex-col gap-8">
         
@@ -470,7 +531,9 @@ export default function DoctorDashboard() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {/* Transfer Doctor */}
+                        {/* Transfer Doctor (operations role only — backend enforces) */}
+                        {canManageOps && (
+                        <>
                         <select
                           value={tok.doctorId}
                           onChange={(e) => transferPatient(tok.id, e.target.value)}
@@ -496,6 +559,8 @@ export default function DoctorDashboard() {
                         >
                           ✕
                         </button>
+                        </>
+                        )}
 
                         {index === 0 && (
                           <Button
@@ -569,5 +634,6 @@ export default function DoctorDashboard() {
       </Dialog>
 
     </DashboardLayout>
+    </RoleGuard>
   );
 }
