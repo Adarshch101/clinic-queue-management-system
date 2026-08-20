@@ -200,15 +200,6 @@ export const PatientRegisterForm: React.FC = () => {
             }}
             error={!!phoneError}
             helperText={phoneError || undefined}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <Box component="span" sx={{ fontSize: 11, fontWeight: 800, color: 'text.muted', letterSpacing: '0.05em' }}>
-                    E.164 format
-                  </Box>
-                ),
-              },
-            }}
           />
         </Stack>
       </Box>
@@ -232,15 +223,6 @@ export const PatientRegisterForm: React.FC = () => {
             }}
             error={!!passwordError}
             helperText={passwordError || undefined}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <Box component="span" sx={{ fontSize: 11, fontWeight: 800, color: 'text.muted', letterSpacing: '0.05em' }}>
-                    Min 8 chars, 1 upper, 1 lower, 1 num, 1 special
-                  </Box>
-                ),
-              },
-            }}
           />
           <TextField
             label="Confirm Password"

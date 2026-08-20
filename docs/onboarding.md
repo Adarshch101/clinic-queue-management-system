@@ -37,6 +37,8 @@ Follow these steps to initialize the project locally:
    # Supabase Client Credentials
    NEXT_PUBLIC_SUPABASE_URL="https://example.supabase.co"
    NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key-here"
+   # Server-only service-role key (never expose to the browser)
+   SUPABASE_SERVICE_ROLE_KEY="your-service-role-key-here"
    ```
 
 4. **Initialize Database Tables:**

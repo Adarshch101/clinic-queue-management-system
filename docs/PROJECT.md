@@ -82,7 +82,8 @@ src/
     ├── apiAuth.ts               # requireAuth / requireRole / requireClinicAccess / sessionHasClinicAccess
     ├── resolveProfile.ts        # Role + permissions resolution (env super admin)
     ├── utils.ts                 # cn() helper (clsx + tailwind-merge) for shadcn/ui
-    ├── supabaseClient.ts        # Supabase JS client
+    ├── supabaseClient.ts        # Supabase JS client (anon)
+    ├── supabaseAdmin.ts         # Server-only service-role client (delete Auth users, sync metadata)
     ├── analyticsService.ts      # Dashboard analytics aggregation
     ├── notificationEngine.ts    # Notification dispatch engine
     ├── fileStorage.ts           # UploadThing storage (ACL via UPLOADTHING_ACL) + validation; local fallback in dev
@@ -158,6 +159,7 @@ See `.env.example`. All are required unless marked optional.
 | `DIRECT_URL` | Direct connection used by Prisma for migrations/push |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (publishable) key |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Server-only** Supabase service-role key (never prefix with `NEXT_PUBLIC_` — bypasses RLS; used by super-admin actions to delete Auth users and sync user metadata) |
 | `SUPER_ADMIN_EMAIL` | Email that is granted **SUPER_ADMIN** on the platform |
 | `SUPER_ADMIN_PASSWORD` | Password used by `npm run db:seed` to create the Super Admin **Auth** login |
 | `SESSION_SECRET` | HMAC secret for the `q-clinix-session` cookie (long random string; required in production) |
@@ -330,7 +332,7 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/super-admin/stats` | SUPER | Global platform stats |
-| POST | `/api/super-admin/actions` | SUPER | Toggle flags, maintenance, settings, announcements, suspend |
+| POST | `/api/super-admin/actions` | SUPER | Toggle flags, maintenance, settings, announcements, clinic status (suspend/reactivate/reject/approve), **delete clinic**, **delete user**, **change user role**, **send warning/appreciation to a user** |
 | GET | `/api/super-admin/users` | SUPER | Unified directory of all patients/staff (role+query filters) |
 | GET/POST | `/api/super-admin/settings` | SUPER | Platform settings read/update |
 | GET/POST | `/api/super-admin/backup` | SUPER | Backup jobs (history + trigger) |
@@ -376,6 +378,7 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 
 - **Signed sessions** — HMAC-SHA256 (timing-safe compare) session cookie, 24 h TTL, `SESSION_SECRET` required in production.
 - **Security headers** — applied in `next.config.ts` **and** `src/proxy.ts`: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Strict-Transport-Security`, and a strict `Content-Security-Policy`.
+- **Service-role key is server-only** — `SUPABASE_SERVICE_ROLE_KEY` is consumed only in `src/lib/supabaseAdmin.ts` (a non-`NEXT_PUBLIC_` variable, so it is never inlined into the browser bundle). It is used solely for Super Admin Auth administration: deleting the Supabase Auth user on user deletion, and syncing `user_metadata.role` on role change.
 - **Route protection** — `proxy.ts` guards all dashboard routes and the Super Admin console; wrong-role users are sent to `/auth/denied`. Each dashboard also self-guards with `RoleGuard` (defense-in-depth).
 - **API authorization** — `apiAuth` helpers gate every sensitive handler; clinic-scoped data is double-checked via `sessionHasClinicAccess` (fail-closed). Ownership is derived from the session or a verified Supabase Bearer token, never from client-supplied IDs.
 - **PHI protection** — clinical data (diagnosis, prescriptions, notes, reports, patient names) is role-scoped and redacted for front-desk roles; the public clinic directory strips doctor contact details. Uploaded file bytes (medical reports and clinic verification documents) are stored in UploadThing with the ACL configured by `UPLOADTHING_ACL` (private by default; `public-read` on free-tier apps that disallow private files) and served only through authenticated, authorization-checked endpoints (`/api/files/report`, `/api/files/document`) that re-check role + clinic access and stream bytes back via short-lived signed URLs. Database backups are stored locally under `data/backups` and served only through `/api/super-admin/backup/download` (SUPER_ADMIN only, path-traversal safe).

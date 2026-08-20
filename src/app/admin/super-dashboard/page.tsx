@@ -224,6 +224,7 @@ export default function SuperAdminDashboard() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersQuery, setUsersQuery] = useState('');
   const [usersRoleFilter, setUsersRoleFilter] = useState('ALL');
+  const [userActionLoading, setUserActionLoading] = useState<string | null>(null);
 
   // Clinic-scoped analytics selector
   const [selectedClinicId, setSelectedClinicId] = useState('');
@@ -508,6 +509,91 @@ export default function SuperAdminDashboard() {
       alert('Failed to delete clinic.');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // Delete a platform user (hard delete of the profile + cascaded records)
+  const handleDeleteUser = async (u: SuperPlatformUser) => {
+    if (!confirm(`Delete ${u.name} (${u.role}) permanently? This removes their profile and all associated records (appointments, visits, reports). Irreversible.`)) return;
+    setUserActionLoading(`delete-${u.id}`);
+    try {
+      const res = await fetch('/api/super-admin/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete-user', id: u.id, role: u.role }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`User "${u.name}" deleted.`);
+        fetchPlatformUsers();
+      } else {
+        alert(data.error || 'Failed to delete user.');
+      }
+    } catch {
+      alert('Failed to delete user.');
+    } finally {
+      setUserActionLoading(null);
+    }
+  };
+
+  // Change a user's role (moves the profile across role tables)
+  const handleChangeUserRole = async (u: SuperPlatformUser, newRole: string) => {
+    if (u.role === newRole) return;
+    if (!u.userId) {
+      alert('Cannot change role of a walk-in patient (no login account).');
+      return;
+    }
+    if (!confirm(`Change ${u.name}'s role from ${u.role} to ${newRole}? This relocates their profile.`)) return;
+    setUserActionLoading(`role-${u.id}`);
+    try {
+      const res = await fetch('/api/super-admin/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'change-role', userId: u.userId, role: newRole }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Role changed to ${newRole}.`);
+        fetchPlatformUsers();
+      } else {
+        alert(data.error || 'Failed to change role.');
+      }
+    } catch {
+      alert('Failed to change role.');
+    } finally {
+      setUserActionLoading(null);
+    }
+  };
+
+  // Send a warning or appreciation to a user
+  const handleSendUserMessage = async (u: SuperPlatformUser, type: 'WARNING' | 'APPRECIATION') => {
+    if (!u.userId) {
+      alert('Cannot message a walk-in patient (no login account).');
+      return;
+    }
+    const message = prompt(
+      type === 'WARNING'
+        ? `Write a warning for ${u.name}:`
+        : `Write an appreciation note for ${u.name}:`
+    );
+    if (!message || !message.trim()) return;
+    setUserActionLoading(`${type.toLowerCase()}-${u.id}`);
+    try {
+      const res = await fetch('/api/super-admin/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'notify-user', userId: u.userId, type, message }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(type === 'WARNING' ? 'Warning sent.' : 'Appreciation sent.');
+      } else {
+        alert(data.error || 'Failed to send message.');
+      }
+    } catch {
+      alert('Failed to send message.');
+    } finally {
+      setUserActionLoading(null);
     }
   };
 
@@ -1692,30 +1778,77 @@ export default function SuperAdminDashboard() {
                   platformUsers.map((u) => (
                     <div
                       key={`${u.role}-${u.id}`}
-                      className="grid grid-cols-[1fr_1.4fr_auto] sm:grid-cols-[1fr_1.4fr_1fr_auto] gap-3 items-center px-4 py-3 border-b border-border-subtle/50 last:border-0 text-xs font-semibold text-text-secondary hover:bg-bg-muted/20 transition"
+                      className="px-4 py-3 border-b border-border-subtle/50 last:border-0 hover:bg-bg-muted/20 transition"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-indigo-400 text-white font-bold flex items-center justify-center text-[10px] shrink-0">
-                          {u.name.charAt(0).toUpperCase()}
-                        </span>
-                        <div className="truncate">
-                          <div className="text-text-primary font-bold truncate">{u.name}</div>
-                          <div className="text-[9px] text-text-muted uppercase tracking-wider">
-                            {u.userId ? (u.userId.startsWith('staff-auth') ? 'Invited (email match)' : 'Registered') : 'Walk-in'}
+                      <div className="grid grid-cols-[1fr_1.4fr_auto] sm:grid-cols-[1fr_1.4fr_1fr_auto] gap-3 items-center text-xs font-semibold text-text-secondary">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-indigo-400 text-white font-bold flex items-center justify-center text-[10px] shrink-0">
+                            {u.name.charAt(0).toUpperCase()}
+                          </span>
+                          <div className="truncate">
+                            <div className="text-text-primary font-bold truncate">{u.name}</div>
+                            <div className="text-[9px] text-text-muted uppercase tracking-wider">
+                              {u.userId ? (u.userId.startsWith('staff-auth') ? 'Invited (email match)' : 'Registered') : 'Walk-in'}
+                            </div>
                           </div>
                         </div>
+                        <span className="truncate">{u.email || '—'}</span>
+                        <span className="hidden sm:block truncate">{u.clinicName}</span>
+                        <Badge
+                          variant={
+                            u.role === 'ADMIN' ? 'primary' : u.role === 'DOCTOR' ? 'success' : u.role === 'RECEPTIONIST' ? 'warning' : 'secondary'
+                          }
+                          size="sm"
+                          className="justify-self-end"
+                        >
+                          {u.role}
+                        </Badge>
                       </div>
-                      <span className="truncate">{u.email || '—'}</span>
-                      <span className="hidden sm:block truncate">{u.clinicName}</span>
-                      <Badge
-                        variant={
-                          u.role === 'ADMIN' ? 'primary' : u.role === 'DOCTOR' ? 'success' : u.role === 'RECEPTIONIST' ? 'warning' : 'secondary'
-                        }
-                        size="sm"
-                        className="justify-self-end"
-                      >
-                        {u.role}
-                      </Badge>
+
+                      <div className="flex flex-wrap items-center gap-2 mt-2.5 pt-2.5 border-t border-border-subtle/40">
+                        <select
+                          value={u.role}
+                          disabled={!u.userId || userActionLoading !== null}
+                          onChange={(e) => handleChangeUserRole(u, e.target.value)}
+                          className="p-1.5 border border-border-subtle rounded-lg bg-bg-surface text-[11px] font-bold text-text-primary focus:outline-none disabled:opacity-50"
+                        >
+                          <option value="PATIENT">Patient</option>
+                          <option value="RECEPTIONIST">Receptionist</option>
+                          <option value="DOCTOR">Doctor</option>
+                          <option value="ADMIN">Clinic Admin</option>
+                        </select>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!u.userId || userActionLoading !== null}
+                          isLoading={userActionLoading === `warning-${u.id}`}
+                          onClick={() => handleSendUserMessage(u, 'WARNING')}
+                          className="text-[11px] border-amber-500/60 text-amber-600 hover:bg-amber-500/10 min-h-[32px]"
+                        >
+                          Warn
+                        </Button>
+                        <Button
+                          variant="success"
+                          size="sm"
+                          disabled={!u.userId || userActionLoading !== null}
+                          isLoading={userActionLoading === `appreciation-${u.id}`}
+                          onClick={() => handleSendUserMessage(u, 'APPRECIATION')}
+                          className="text-[11px] min-h-[32px]"
+                        >
+                          Appreciate
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={userActionLoading !== null}
+                          isLoading={userActionLoading === `delete-${u.id}`}
+                          onClick={() => handleDeleteUser(u)}
+                          className="text-[11px] min-h-[32px]"
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </div>
                   ))
                 )}

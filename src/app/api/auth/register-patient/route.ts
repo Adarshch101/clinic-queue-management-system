@@ -59,21 +59,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid gender value' }, { status: 400 });
     }
 
-    // Check if email already has a patient profile
-    const existingPatient = await prisma.patient.findFirst({
+    // Look up existing patient rows by email and by userId. Patient.userId is
+    // unique, so a row may already exist for this user from a previous attempt
+    // or from /api/auth/sync auto-seeding them to the first clinic.
+    const existingByEmail = await prisma.patient.findFirst({
       where: { email: email.toLowerCase() },
     });
+    const existingByUser = await prisma.patient.findUnique({
+      where: { userId },
+    });
 
-    if (existingPatient && existingPatient.userId) {
+    // Another account already owns this email.
+    if (existingByEmail && existingByEmail.userId && existingByEmail.userId !== userId) {
       return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
     }
 
-    // Create patient profile with nullable clinicId (general user registration)
+    // Create/update patient profile with nullable clinicId (general user registration)
     const result = await prisma.$transaction(async (tx) => {
-      // If there's an existing walk-in patient row with this email (no userId), link it
-      if (existingPatient && !existingPatient.userId) {
+      // The caller already has a patient row — update its identity details
+      // instead of creating a duplicate (Patient.userId is unique). clinicId is
+      // preserved so an existing clinic binding is not wiped by a re-submit.
+      if (existingByUser) {
         const updated = await tx.patient.update({
-          where: { id: existingPatient.id },
+          where: { id: existingByUser.id },
+          data: {
+            name: name.trim(),
+            email: email.toLowerCase(),
+            phone: phone.trim(),
+            age: parsedAge,
+            gender,
+          },
+        });
+        return { patientId: updated.id };
+      }
+
+      // If there's an existing walk-in patient row with this email (no userId), link it
+      if (existingByEmail && !existingByEmail.userId) {
+        const updated = await tx.patient.update({
+          where: { id: existingByEmail.id },
           data: {
             userId,
             name: name.trim(),
@@ -87,9 +110,11 @@ export async function POST(request: Request) {
         return { patientId: updated.id };
       }
 
-      // Create new patient profile
-      const patient = await tx.patient.create({
-        data: {
+      // Create new patient profile (upsert guards against a concurrent
+      // registration racing on the unique userId).
+      const patient = await tx.patient.upsert({
+        where: { userId },
+        create: {
           userId,
           name: name.trim(),
           email: email.toLowerCase(),
@@ -98,6 +123,13 @@ export async function POST(request: Request) {
           gender,
           clinicId: null,
           role: 'PATIENT',
+        },
+        update: {
+          name: name.trim(),
+          email: email.toLowerCase(),
+          phone: phone.trim(),
+          age: parsedAge,
+          gender,
         },
       });
       return { patientId: patient.id };

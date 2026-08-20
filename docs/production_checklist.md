@@ -17,10 +17,12 @@ Verify all checklist items before launching the Clinic Queue Management Platform
 - [ ] Verify that API rate limiters are active on sensitive routes (Login, Register, Join Queue).
 - [ ] Check that security response headers (`X-Frame-Options`, `X-Content-Type-Options`) are active in `next.config.ts`.
 - [ ] Set a strong `SESSION_SECRET` in production (the session cookie is HMAC-signed with it).
-- [x] No passwordless login fallback exists (removed); Supabase is the only auth provider.
+- [ ] Confirm `SUPABASE_SERVICE_ROLE_KEY` is set as a **server-only** env var (never `NEXT_PUBLIC_*`) so the browser bundle never receives a key that bypasses RLS.
+- [ ] No passwordless login fallback exists (removed); Supabase is the only auth provider.
 - [x] Medical uploads are stored with UploadThing (ACL set via `UPLOADTHING_ACL`; default `private`, `public-read` on free-tier apps that disallow private files) and served only via authenticated, role/clinic-checked endpoints that stream bytes back through short-lived signed URLs. The raw CDN URL is never returned to clients.
 - [ ] In the UploadThing dashboard, set the app ACL to private (paid plans) or confirm `UPLOADTHING_ACL=public-read` matches the app default.
 - [ ] Spot-check RBAC: a RECEPTIONIST cannot call `/api/reports`, `/api/admin/*`, or `/api/super-admin/*`; a DOCTOR cannot reorder/transfer/cancel queue tokens; a clinic admin from clinic A cannot read clinic B data.
+- [ ] Spot-check Super Admin governance: only `SUPER_ADMIN` can delete users/clinics, change roles, or send warnings/appreciations; all such actions appear in the audit log and user deletion also revokes the Supabase Auth account.
 - [ ] Verify the audit endpoint cannot be forged by clients (actor is derived from the session server-side).
 
 ---

@@ -21,10 +21,20 @@ export const authService = {
     gender: 'Male' | 'Female' | 'Other';
     password: string;
   }) {
-    // 1. Trigger signup in Supabase Auth
+    // 1. Trigger signup in Supabase Auth (user data is stored as metadata so it
+    //    lives in Supabase too, not only in the PostgreSQL profile row)
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
+      options: {
+        data: {
+          name: data.name,
+          phone: data.phone,
+          age: data.age,
+          gender: data.gender,
+          role: 'PATIENT',
+        },
+      },
     });
 
     if (authError) throw authError;
@@ -39,6 +49,22 @@ export const authService = {
     });
     if (loginError) throw loginError;
     const accessToken = session?.access_token;
+
+    // Persist the user data into Supabase Auth metadata (belt-and-braces in
+    // case the sign-up payload was stripped). Non-fatal: the canonical profile
+    // is the PostgreSQL row.
+    const { error: metaError } = await supabase.auth.updateUser({
+      data: {
+        name: data.name,
+        phone: data.phone,
+        age: data.age,
+        gender: data.gender,
+        role: 'PATIENT',
+      },
+    });
+    if (metaError) {
+      console.warn('Failed to persist patient metadata to Supabase:', metaError.message);
+    }
 
     // 3. Call register-patient API to write patient profile to PostgreSQL
     const res = await fetch('/api/auth/register-patient', {
@@ -106,10 +132,18 @@ export const authService = {
     pincode: string;
     password: string;
   }) {
-    // 1. Trigger signup in Supabase Auth
+    // 1. Trigger signup in Supabase Auth (user data is stored as metadata so it
+    //    lives in Supabase too, not only in the PostgreSQL profile row)
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
+      options: {
+        data: {
+          name: data.ownerName,
+          phone: data.phone,
+          role: 'ADMIN',
+        },
+      },
     });
 
     if (authError) throw authError;
@@ -124,6 +158,19 @@ export const authService = {
     });
     if (sessionError) throw sessionError;
     const accessToken = session?.access_token;
+
+    // Persist the user data into Supabase Auth metadata (belt-and-braces).
+    // Non-fatal: the canonical profile is the PostgreSQL row.
+    const { error: clinicMetaError } = await supabase.auth.updateUser({
+      data: {
+        name: data.ownerName,
+        phone: data.phone,
+        role: 'ADMIN',
+      },
+    });
+    if (clinicMetaError) {
+      console.warn('Failed to persist admin metadata to Supabase:', clinicMetaError.message);
+    }
 
     // 3. Call register API to write clinic and default admin profile to PostgreSQL
     const res = await fetch('/api/auth/register', {

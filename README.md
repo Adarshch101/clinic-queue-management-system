@@ -34,7 +34,7 @@ Built with **Next.js 16 (App Router)**, **Prisma 7 + PostgreSQL**, **Supabase Au
 - **Appointments & visits** — booking, check-in, and post-consultation records (diagnosis, prescriptions, notes) with PHI redaction for front-desk roles.
 - **Medical report management** — secure upload, listing, and authenticated viewing of patient documents (stored in UploadThing with ACL configured via `UPLOADTHING_ACL`).
 - **Clinic onboarding workflow** — multi-step registration with document upload and a Super Admin verification/review queue.
-- **Super Admin console** — platform stats, tenant deep-dives, user directory, feature flags, announcements, audit logs, settings, and database backups.
+- **Super Admin console** — platform stats, tenant deep-dives, user directory, feature flags, announcements, audit logs, settings, and database backups — with full user governance: delete users/clinics, change user roles, and send warnings or appreciations.
 - **Notifications & analytics** — in-app notification engine, dashboard analytics, scheduled reports, and per-user widget preferences.
 
 ---
@@ -112,6 +112,8 @@ Route handlers  →  Auth (apiAuth helpers)  →  Validators (Zod)  →  Service
 │       ├── session.ts           # Signed cookie session create/verify
 │       ├── apiAuth.ts           # requireAuth / requireRole / requireClinicAccess
 │       ├── resolveProfile.ts    # Role + permissions resolution
+│       ├── supabaseClient.ts    # Anon Supabase client (client + server) + realtime bus
+│       ├── supabaseAdmin.ts     # Server-only service-role client (delete Auth users, sync metadata)
 │       ├── fileStorage.ts       # UploadThing storage (ACL via UPLOADTHING_ACL) + validation; local fallback in dev
 │       ├── backupService.ts     # Private database backups + protected download keys
 │       ├── muiTheme.ts          # MUI light/dark themes
@@ -139,6 +141,7 @@ npm install
 # 2. Configure environment
 cp .env.example .env
 # fill in DATABASE_URL, DIRECT_URL, Supabase URL/anon key,
+# SUPABASE_SERVICE_ROLE_KEY (server-only, never NEXT_PUBLIC_),
 # SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD, SESSION_SECRET,
 # and UPLOADTHING_TOKEN (optional in dev — falls back to local storage)
 
@@ -179,6 +182,7 @@ All variables are required unless marked optional. See `.env.example` for the te
 | `DIRECT_URL` | Direct connection for Prisma migrations/`db push` |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase publishable (anon) key |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Server-only** Supabase service-role key (never prefix with `NEXT_PUBLIC_` — bypasses RLS; used by super-admin actions to delete Auth users and sync user metadata) |
 | `SUPER_ADMIN_EMAIL` | Email granted **SUPER_ADMIN** on the platform (required in production — fail-closed if missing) |
 | `SUPER_ADMIN_PASSWORD` | Password used by `npm run db:seed` to create the Super Admin Auth login |
 | `SESSION_SECRET` | HMAC secret for the `q-clinix-session` cookie (long random string; **required in production**) |
@@ -246,7 +250,7 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 | Files | `GET /api/files/report`, `GET /api/files/document` — authenticated, role + clinic-checked |
 | Admin | `GET /api/admin/dashboard-stats`, `POST /api/admin/profile`, `POST|DELETE /api/admin/staff`, `GET /api/admin/patients` |
 | Analytics | `GET /api/analytics/dashboard`, `GET|POST /api/analytics/reports`, `POST /api/analytics/reports/export`, `GET|POST /api/analytics/widget-preferences` |
-| Super Admin | `GET /api/super-admin/stats`, `POST /api/super-admin/actions`, `GET /api/super-admin/users`, `GET|POST /api/super-admin/settings`, `GET|POST /api/super-admin/backup`, `GET /api/super-admin/backup/download` |
+| Super Admin | `GET /api/super-admin/stats`, `POST /api/super-admin/actions` (clinic status, delete clinic, **delete user, change role, warn/appreciate user**, feature flags, maintenance, settings, announcements), `GET /api/super-admin/users`, `GET|POST /api/super-admin/settings`, `GET|POST /api/super-admin/backup`, `GET /api/super-admin/backup/download` |
 | Notifications & UX | `GET|PATCH|DELETE /api/notifications`, `GET|POST /api/notifications/preferences`, `GET|POST /api/user/preferences` |
 
 ---
@@ -254,6 +258,7 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 ## Security
 
 - **Signed sessions** — HMAC-SHA256 (timing-safe compare) session cookie, 24 h TTL; tampering or expiry yields `null`. `SESSION_SECRET` is required in production.
+- **Service-role key is server-only** — `SUPABASE_SERVICE_ROLE_KEY` is used only in `src/lib/supabaseAdmin.ts` (never imported by client code, no `NEXT_PUBLIC_` prefix, so it never reaches the browser bundle); it powers Super Admin Auth administration (deleting users, syncing role metadata).
 - **Security headers** — set in `next.config.ts` and `src/proxy.ts`: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `HSTS`, and a strict `Content-Security-Policy`.
 - **API authorization** — `apiAuth` helpers gate every sensitive handler; clinic scoping is fail-closed; ownership is derived from the session or a verified Supabase Bearer token.
 - **PHI protection** — diagnosis/prescriptions/notes/report bytes are role-scoped and redacted for front-desk roles; the public clinic directory strips doctor contact details.

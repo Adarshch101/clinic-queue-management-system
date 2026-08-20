@@ -179,6 +179,13 @@ export class NotificationEngine {
         subject = 'Account Security Notice';
         break;
 
+      case 'SUPER_ADMIN_MESSAGE':
+        recipients = [{ id: payload.userId, email: payload.email || '' }];
+        title = payload.title || 'Message from Platform Administrator';
+        bodyTemplate = payload.message || '';
+        subject = title;
+        break;
+
       default:
         console.log(`[NOTIFICATION ENGINE] Unknown event type: ${eventType}`);
         return;
