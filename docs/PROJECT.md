@@ -85,7 +85,7 @@ src/
     ├── supabaseClient.ts        # Supabase JS client
     ├── analyticsService.ts      # Dashboard analytics aggregation
     ├── notificationEngine.ts    # Notification dispatch engine
-    ├── fileStorage.ts           # Document upload helpers
+    ├── fileStorage.ts           # UploadThing storage (ACL via UPLOADTHING_ACL) + validation; local fallback in dev
     ├── backupService.ts         # Backup job runner
     ├── mockData.ts              # Legacy mock data / types
     ├── muiTheme.ts              # MUI light/dark themes from the brand palette
@@ -228,6 +228,7 @@ The API layer was audited and hardened so role checks cannot be bypassed:
 - **Emergency flag** — the public `POST /api/queue/join` honors `isEmergency` only for authenticated staff of the clinic; anonymous self-flagging is ignored, and the doctor is cross-validated to belong to the clinic being joined.
 - **Ownership verification** — resources resolved from the signed session rather than client-supplied IDs: `/api/auth/session` requires a matching cookie or Supabase Bearer token for the target `userId`; `/api/auth/audit` derives the actor from the session; `/api/appointments`/`/api/reports`/`/api/visits` force patients to their own records; registration/sync routes verify the Supabase `accessToken`'s `user.id` equals the requested `userId`.
 - **PHI redaction** — `/api/visits` strips diagnosis/prescription/notes for RECEPTIONIST; `/api/reports` excludes RECEPTIONIST entirely (PATIENT/DOCTOR/ADMIN/SUPER_ADMIN); the public clinic directory (`/api/clinics/search`, `/api/clinics/details`) drops doctor email/phone/auth-`userId`.
+- **Private file storage (UploadThing)** — medical reports and clinic verification documents are uploaded with a private ACL by default (`UPLOADTHING_ACL`, configurable to `public-read` on free-tier apps that disallow private files) and served only via `/api/files/report` and `/api/files/document`, which re-check role + clinic access and stream bytes back through short-lived signed URLs. The raw CDN URL is never returned to clients. Without `UPLOADTHING_TOKEN` the app falls back to the private `data/uploads` directory for development only.
 - **Appointment status** — `PATCH /api/appointments` validates statuses against the real enum; PATIENT can only cancel their own appointment.
 
 ---
@@ -377,7 +378,7 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 - **Security headers** — applied in `next.config.ts` **and** `src/proxy.ts`: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Strict-Transport-Security`, and a strict `Content-Security-Policy`.
 - **Route protection** — `proxy.ts` guards all dashboard routes and the Super Admin console; wrong-role users are sent to `/auth/denied`. Each dashboard also self-guards with `RoleGuard` (defense-in-depth).
 - **API authorization** — `apiAuth` helpers gate every sensitive handler; clinic-scoped data is double-checked via `sessionHasClinicAccess` (fail-closed). Ownership is derived from the session or a verified Supabase Bearer token, never from client-supplied IDs.
-- **PHI protection** — clinical data (diagnosis, prescriptions, notes, reports, patient names) is role-scoped and redacted for front-desk roles; the public clinic directory strips doctor contact details. Uploaded file bytes (reports, verification documents, database backups) are stored **outside** `public/` and served only through authenticated, authorization-checked endpoints (`/api/files/report`, `/api/files/document`, `/api/super-admin/backup/download`) that re-check role + clinic access and block path traversal.
+- **PHI protection** — clinical data (diagnosis, prescriptions, notes, reports, patient names) is role-scoped and redacted for front-desk roles; the public clinic directory strips doctor contact details. Uploaded file bytes (medical reports and clinic verification documents) are stored in UploadThing with the ACL configured by `UPLOADTHING_ACL` (private by default; `public-read` on free-tier apps that disallow private files) and served only through authenticated, authorization-checked endpoints (`/api/files/report`, `/api/files/document`) that re-check role + clinic access and stream bytes back via short-lived signed URLs. Database backups are stored locally under `data/backups` and served only through `/api/super-admin/backup/download` (SUPER_ADMIN only, path-traversal safe).
 - **Rate limiting** — in-memory `RateLimiter` (`src/lib/backend/middleware/rateLimiter.ts`) on sensitive endpoints (queue join: 5/min; registration: 10/hr).
 - **Secrets** — `.env` is gitignored; `.env.example` documents placeholders only; SMTP/Twilio/API keys are stored obfuscated in `IntegrationConfig`/`ApiKey` tables.
 
@@ -414,7 +415,7 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 - **Dashboards are hash-driven**: sidebar links are native anchors (`…/dashboard#tab`); every dashboard syncs the hash to its active tab. Don't reintroduce a `Tabs` strip unless the sidebar is removed too.
 - **Super Admin is email-designated** — there is no DB row for it; changing `SUPER_ADMIN_EMAIL` without re-seeding/creating the Auth user breaks that login.
 - **Login** — Supabase is the only authentication provider; there is no passwordless fallback, so authentication fails closed.
-- **Uploads are private** — medical reports, verification documents and backups are stored under `data/` (outside `public/`) and served only through authenticated, role/clinic-checked endpoints (`/api/files/report`, `/api/files/document`, `/api/super-admin/backup/download`).
+- **Uploads are private** — medical reports and clinic verification documents are stored in UploadThing with the ACL configured by `UPLOADTHING_ACL` and served only through authenticated, role/clinic-checked endpoints (`/api/files/report`, `/api/files/document`) that stream bytes back via short-lived signed URLs; the raw CDN URL is never exposed to clients. Database backups are stored under `data/backups` and served only through `/api/super-admin/backup/download`. Without `UPLOADTHING_TOKEN` (development only) uploads fall back to the private `data/uploads` directory.
 - **`/api/auth/sync` PATIENT auto-seed** binds a newly registered patient to the first clinic in the DB (they never chose it). Follow `register-patient` and leave `clinicId` null until the patient selects a clinic.
 - **Public TV display** (`/tv-display`) requires a staff session because the underlying queue endpoint is now staff-scoped.
 - **shadcn/ui tokens** — the shadcn utilities (`bg-card`, `text-foreground`, `bg-muted`, …) resolve via the `@theme inline` block in `globals.css`; do not add a second `@theme` definition with the same key (Tailwind v4 rejects duplicate theme variables).

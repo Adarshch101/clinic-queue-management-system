@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
-import { resolveUploadPath } from '@/lib/fileStorage';
-import { readFile } from 'fs/promises';
+import { readUploadFile } from '@/lib/fileStorage';
 import path from 'path';
 
 const MIME_TYPES: Record<string, string> = {
@@ -17,7 +16,8 @@ const MIME_TYPES: Record<string, string> = {
  * Serves medical-report bytes through an authenticated, authorization-checked
  * endpoint. RECEPTIONIST is excluded (front-desk must not receive report
  * bytes); patients may only open their own reports; other clinical staff may
- * open reports of patients in their own clinic only.
+ * open reports of patients in their own clinic only. File bytes are stored
+ * privately in UploadThing and streamed back via a short-lived signed URL.
  */
 export async function GET(request: Request) {
   const auth = requireRole(request, ['PATIENT', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN']);
@@ -50,15 +50,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'You do not have access to this report' }, { status: 403 });
     }
 
-    const absPath = await resolveUploadPath(report.fileUrl);
-    if (!absPath) {
+    const file = await readUploadFile(report.fileUrl);
+    if (!file) {
       return NextResponse.json({ error: 'Report file is missing' }, { status: 404 });
     }
 
-    const content = await readFile(absPath);
     const ext = path.extname(report.fileName).replace('.', '').toLowerCase() || 'pdf';
 
-    return new NextResponse(content, {
+    return new NextResponse(file.content, {
       status: 200,
       headers: {
         'Content-Type': MIME_TYPES[ext] || 'application/octet-stream',

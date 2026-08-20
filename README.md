@@ -32,7 +32,7 @@ Built with **Next.js 16 (App Router)**, **Prisma 7 + PostgreSQL**, **Supabase Au
 - **Role-based dashboards** — dedicated workspaces for `PATIENT`, `RECEPTIONIST`, `DOCTOR`, `ADMIN`, and `SUPER_ADMIN`, guarded at the route layer, the client layer, and the API layer.
 - **Queue operations** — call next, complete consultation, transfer, skip, recall, emergency approval, add delay, pause/resume — each gated by a per-action role matrix.
 - **Appointments & visits** — booking, check-in, and post-consultation records (diagnosis, prescriptions, notes) with PHI redaction for front-desk roles.
-- **Medical report management** — secure upload, listing, and authenticated viewing of patient documents (stored outside `public/`).
+- **Medical report management** — secure upload, listing, and authenticated viewing of patient documents (stored in UploadThing with ACL configured via `UPLOADTHING_ACL`).
 - **Clinic onboarding workflow** — multi-step registration with document upload and a Super Admin verification/review queue.
 - **Super Admin console** — platform stats, tenant deep-dives, user directory, feature flags, announcements, audit logs, settings, and database backups.
 - **Notifications & analytics** — in-app notification engine, dashboard analytics, scheduled reports, and per-user widget preferences.
@@ -112,12 +112,12 @@ Route handlers  →  Auth (apiAuth helpers)  →  Validators (Zod)  →  Service
 │       ├── session.ts           # Signed cookie session create/verify
 │       ├── apiAuth.ts           # requireAuth / requireRole / requireClinicAccess
 │       ├── resolveProfile.ts    # Role + permissions resolution
-│       ├── fileStorage.ts       # Private upload storage + validation (outside public/)
+│       ├── fileStorage.ts       # UploadThing storage (ACL via UPLOADTHING_ACL) + validation; local fallback in dev
 │       ├── backupService.ts     # Private database backups + protected download keys
 │       ├── muiTheme.ts          # MUI light/dark themes
 │       └── backend/             # errors, middleware, repositories, services, validators, workers
 ├── docs/                        # Full documentation set (see Documentation)
-└── public/                      # Static assets only (no PHI — uploads live in data/)
+└── public/                      # Static assets only (no PHI — files live in UploadThing)
 ```
 
 ---
@@ -139,7 +139,8 @@ npm install
 # 2. Configure environment
 cp .env.example .env
 # fill in DATABASE_URL, DIRECT_URL, Supabase URL/anon key,
-# SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD, SESSION_SECRET
+# SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD, SESSION_SECRET,
+# and UPLOADTHING_TOKEN (optional in dev — falls back to local storage)
 
 # 3. Apply the schema to the database
 npx prisma db push
@@ -181,6 +182,9 @@ All variables are required unless marked optional. See `.env.example` for the te
 | `SUPER_ADMIN_EMAIL` | Email granted **SUPER_ADMIN** on the platform (required in production — fail-closed if missing) |
 | `SUPER_ADMIN_PASSWORD` | Password used by `npm run db:seed` to create the Super Admin Auth login |
 | `SESSION_SECRET` | HMAC secret for the `q-clinix-session` cookie (long random string; **required in production**) |
+| `UPLOADTHING_TOKEN` | UploadThing API token for file storage (required in production; falls back to local `data/uploads` in dev) |
+| `UPLOADTHING_APP_ID` | UploadThing app ID (needed if you set up client-side uploads; token alone suffices for server-side storage) |
+| `UPLOADTHING_ACL` | ACL for stored files: `private` (default, paid plan) or `public-read` (free tier). The raw CDN URL is never returned to clients either way — files are served only via authenticated `/api/files/*` endpoints |
 | `SMTP_*`, `SMTP_FROM` | Optional email provider settings for notifications |
 
 > **Never commit real credentials.** `.env` is gitignored. Use placeholders in any shared example.
@@ -253,7 +257,7 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 - **Security headers** — set in `next.config.ts` and `src/proxy.ts`: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `HSTS`, and a strict `Content-Security-Policy`.
 - **API authorization** — `apiAuth` helpers gate every sensitive handler; clinic scoping is fail-closed; ownership is derived from the session or a verified Supabase Bearer token.
 - **PHI protection** — diagnosis/prescriptions/notes/report bytes are role-scoped and redacted for front-desk roles; the public clinic directory strips doctor contact details.
-- **Private file storage** — medical reports, verification documents, and database backups are stored under `data/` (outside `public/`) and served only through authenticated endpoints that re-check role + clinic access and block path traversal.
+- **Private file storage** — medical reports and clinic verification documents are stored in UploadThing (ACL configured via `UPLOADTHING_ACL`; private by default, `public-read` on free-tier apps that disallow private files) and served only through authenticated `/api/files/report` and `/api/files/document` endpoints that re-check role + clinic access and stream bytes back via short-lived signed URLs — the raw CDN URL is never exposed to clients. Database backups stay local under `data/backups` and are served only via `/api/super-admin/backup/download`.
 - **Input validation** — server-side validation on registration, queue join, appointments, queue actions, uploads (extension allow-list + 10 MB cap), and onboarding review actions.
 - **Rate limiting** — in-memory limiter on sensitive endpoints (queue join, registration).
 - **No passwordless bypass** — Supabase is the only authentication provider; login fails closed if it is unreachable.
@@ -280,3 +284,4 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 - [Material UI](https://mui.com)
 - [Prisma](https://www.prisma.io/docs)
 - [Supabase](https://supabase.com/docs)
+- [UploadThing](https://docs.uploadthing.com) — file storage (reports & verification documents)

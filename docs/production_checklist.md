@@ -18,7 +18,8 @@ Verify all checklist items before launching the Clinic Queue Management Platform
 - [ ] Check that security response headers (`X-Frame-Options`, `X-Content-Type-Options`) are active in `next.config.ts`.
 - [ ] Set a strong `SESSION_SECRET` in production (the session cookie is HMAC-signed with it).
 - [x] No passwordless login fallback exists (removed); Supabase is the only auth provider.
-- [x] Medical uploads are stored outside `public/` (in `data/`) and served only via authenticated, role/clinic-checked endpoints.
+- [x] Medical uploads are stored with UploadThing (ACL set via `UPLOADTHING_ACL`; default `private`, `public-read` on free-tier apps that disallow private files) and served only via authenticated, role/clinic-checked endpoints that stream bytes back through short-lived signed URLs. The raw CDN URL is never returned to clients.
+- [ ] In the UploadThing dashboard, set the app ACL to private (paid plans) or confirm `UPLOADTHING_ACL=public-read` matches the app default.
 - [ ] Spot-check RBAC: a RECEPTIONIST cannot call `/api/reports`, `/api/admin/*`, or `/api/super-admin/*`; a DOCTOR cannot reorder/transfer/cancel queue tokens; a clinic admin from clinic A cannot read clinic B data.
 - [ ] Verify the audit endpoint cannot be forged by clients (actor is derived from the session server-side).
 
