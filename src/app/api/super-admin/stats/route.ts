@@ -35,6 +35,15 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Point document links at the auth-gated endpoint instead of the on-disk key.
+    const clinicDtos = clinics.map((c) => ({
+      ...c,
+      documents: c.documents.map((d) => ({
+        ...d,
+        fileUrl: `/api/files/document?documentId=${d.id}`,
+      })),
+    }));
+
     // 3. Get / Seed Feature Flags
     let flags = await prisma.featureFlag.findMany();
     if (flags.length === 0) {
@@ -89,7 +98,7 @@ export async function GET(request: Request) {
         waitingTokens,
         servedTokens,
       },
-      clinics,
+      clinics: clinicDtos,
       featureFlags: flags,
       platformSettings: settings,
       announcements,

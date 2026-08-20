@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireClinicAccess, sessionHasClinicAccess } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
-  const auth = requireClinicAccess(request, ['ADMIN', 'SUPER_ADMIN']);
+  const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 

@@ -61,6 +61,13 @@ export async function GET(request: Request) {
       where: { clinicId },
     });
 
+    // Never expose the on-disk file key; point at the auth-gated download
+    // endpoint instead.
+    const documentDtos = documents.map((d) => ({
+      ...d,
+      fileUrl: `/api/files/document?documentId=${d.id}`,
+    }));
+
     return NextResponse.json({
       stats: {
         totalPatients: totalTokensCount,
@@ -76,7 +83,7 @@ export async function GET(request: Request) {
         doctors,
       },
       recentActivity: logs,
-      documents,
+      documents: documentDtos,
     });
   } catch (error: unknown) {
     console.error('API Fetch dashboard stats error:', error);

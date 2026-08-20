@@ -11,6 +11,7 @@ import { Input, Textarea } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Dialog } from '@/components/ui/Dialog';
 import type { Doctor, MedicalReport } from '@/lib/mockData';
+import { validateRequired, hasErrors, type ValidationErrors } from '@/lib/validation';
 import { 
   SkipForward, HelpCircle, Pause, Play, 
   Clock, AlertOctagon, Check, Eye, History, FileText, 
@@ -59,6 +60,7 @@ export default function DoctorDashboard() {
   const [diagnosis, setDiagnosis] = useState('');
   const [prescription, setPrescription] = useState('');
   const [notes, setNotes] = useState('');
+  const [consultErrors, setConsultErrors] = useState<ValidationErrors>({});
 
   // Selected report to preview in overlay modal
   const [previewReport, setPreviewReport] = useState<MedicalReport | null>(null);
@@ -147,11 +149,20 @@ export default function DoctorDashboard() {
     e.preventDefault();
     if (!activeToken) return;
 
+    const errors: ValidationErrors = {
+      diagnosis: validateRequired(diagnosis, 'Diagnosis'),
+    };
+    if (hasErrors(errors)) {
+      setConsultErrors(errors);
+      return;
+    }
+    setConsultErrors({});
+
     setActionLoading(true);
     try {
       await completeConsultation(
         activeToken.id,
-        diagnosis || 'General check-up consultation completed',
+        diagnosis.trim(),
         prescription,
         notes
       );
@@ -378,6 +389,7 @@ export default function DoctorDashboard() {
                     placeholder="e.g. Mild hypertension, seasonal allergic rhinitis..."
                     value={diagnosis}
                     onChange={(e) => setDiagnosis(e.target.value)}
+                    error={consultErrors.diagnosis || undefined}
                   />
 
                   <Input

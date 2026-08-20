@@ -10,6 +10,14 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
+import {
+  validateRequired,
+  validateReason,
+  validateDateTime,
+  validateFile,
+  hasErrors,
+  type ValidationErrors,
+} from '@/lib/validation';
 import { 
   Calendar, Clock, FileText, QrCode, Upload, 
   FileCheck, Activity, Plus 
@@ -40,6 +48,9 @@ export default function PatientDashboard() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
 
+  const [bookingErrors, setBookingErrors] = useState<ValidationErrors>({});
+  const [reportErrors, setReportErrors] = useState<ValidationErrors>({});
+
   // The appointments and queue APIs already scope results to the signed-in
   // patient by their record id, so no client-side patientId match is needed.
   const myAppointments = appointments;
@@ -61,8 +72,17 @@ export default function PatientDashboard() {
 
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookingDocId || !bookingReason || !bookingTime) return;
-    
+    const errors: ValidationErrors = {
+      doctorId: validateRequired(bookingDocId, 'Doctor'),
+      reason: validateReason(bookingReason, 'Reason'),
+      time: validateDateTime(bookingTime),
+    };
+    if (hasErrors(errors)) {
+      setBookingErrors(errors);
+      return;
+    }
+    setBookingErrors({});
+
     setBookingLoading(true);
     try {
       await bookAppointment(bookingDocId, bookingReason, new Date(bookingTime).toISOString());
@@ -89,8 +109,17 @@ export default function PatientDashboard() {
 
   const submitReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reportName || !reportFileObj) return;
-    
+    const errors: ValidationErrors = {
+      name: validateRequired(reportName, 'Report name'),
+      file: validateFile(reportFileObj),
+    };
+    if (hasErrors(errors)) {
+      setReportErrors(errors);
+      return;
+    }
+    setReportErrors({});
+    if (!reportFileObj) return;
+
     setUploadLoading(true);
     try {
       const fileExt = reportName.split('.').pop() || 'pdf';
@@ -107,7 +136,7 @@ export default function PatientDashboard() {
   };
 
   return (
-    <RoleGuard roles={['PATIENT']}>
+    <RoleGuard roles={['PATIENT', 'ADMIN', 'SUPER_ADMIN']}>
     <DashboardLayout>
       <div className="flex flex-col gap-8">
         
@@ -220,6 +249,7 @@ export default function PatientDashboard() {
                   required
                   value={bookingDocId}
                   onChange={(e) => setBookingDocId(e.target.value)}
+                  error={bookingErrors.doctorId || undefined}
                   options={[
                     { value: '', label: 'Choose Physician...' },
                     ...doctors
@@ -234,6 +264,7 @@ export default function PatientDashboard() {
                   required
                   value={bookingTime}
                   onChange={(e) => setBookingTime(e.target.value)}
+                  error={bookingErrors.time || undefined}
                 />
 
                 <div className="sm:col-span-2">
@@ -243,6 +274,7 @@ export default function PatientDashboard() {
                     placeholder="e.g. Follow-up consultation, severe headache..."
                     value={bookingReason}
                     onChange={(e) => setBookingReason(e.target.value)}
+                    error={bookingErrors.reason || undefined}
                   />
                 </div>
 
@@ -312,6 +344,11 @@ export default function PatientDashboard() {
                     />
                   </label>
                 )}
+                {reportErrors.file && (
+                  <span className="text-[10px] font-semibold text-destructive flex items-center gap-1" role="alert">
+                    ⚠️ {reportErrors.file}
+                  </span>
+                )}
 
                 {reportFile && (
                   <>
@@ -320,6 +357,7 @@ export default function PatientDashboard() {
                       required
                       value={reportName}
                       onChange={(e) => setReportName(e.target.value)}
+                      error={reportErrors.name || undefined}
                     />
                     
                     <Select

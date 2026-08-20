@@ -22,13 +22,19 @@ export async function POST(request: Request) {
     // Authenticated path: the actor is derived server-side from the session.
     // Client-supplied userId / clinicId are ignored to prevent impersonation.
     if (session) {
-      let resolvedClinicId = inputClinicId;
+      let resolvedClinicId: string | undefined = inputClinicId;
 
       // Only SUPER_ADMIN may attach logs to a clinic they are not scoped to.
+      // A non-SUPER_ADMIN without a clinicId (e.g. a patient) must not be able
+      // to attribute audit entries to an arbitrary clinic.
       if (session.role !== 'SUPER_ADMIN') {
-        resolvedClinicId = session.clinicId || inputClinicId;
-        if (session.clinicId && inputClinicId && session.clinicId !== inputClinicId) {
-          return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
+        if (session.clinicId) {
+          if (inputClinicId && inputClinicId !== session.clinicId) {
+            return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
+          }
+          resolvedClinicId = session.clinicId;
+        } else {
+          resolvedClinicId = undefined;
         }
       }
 

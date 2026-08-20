@@ -9,6 +9,13 @@ import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
+import {
+  validateEmail,
+  validatePhone,
+  validateRequired,
+  hasErrors,
+  type ValidationErrors,
+} from '@/lib/validation';
 import { 
   Building, Users, Shield, ToggleLeft, ToggleRight, 
   CheckCircle2, 
@@ -85,6 +92,7 @@ interface SuperBackupJob {
   size: number;
   createdAt: string;
   status: string;
+  downloadUrl?: string;
 }
 
 interface SuperSystemInfo {
@@ -198,6 +206,9 @@ export default function SuperAdminDashboard() {
   const [annTitle, setAnnTitle] = useState('');
   const [annContent, setAnnContent] = useState('');
   const [annTarget, setAnnTarget] = useState('ALL');
+
+  const [settingsErrors, setSettingsErrors] = useState<ValidationErrors>({});
+  const [announcementErrors, setAnnouncementErrors] = useState<ValidationErrors>({});
 
   // Search & Filters states
   const [clinicQuery, setClinicQuery] = useState('');
@@ -374,6 +385,17 @@ export default function SuperAdminDashboard() {
   // 3. Save general settings
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors: ValidationErrors = {
+      name: validateRequired(platformName, 'Platform name'),
+      email: validateEmail(supportEmail),
+      phone: supportPhone ? validatePhone(supportPhone) : null,
+    };
+    if (hasErrors(errors)) {
+      setSettingsErrors(errors);
+      return;
+    }
+    setSettingsErrors({});
+
     setActionLoading(true);
     try {
       const res = await fetch('/api/super-admin/actions', {
@@ -402,7 +424,16 @@ export default function SuperAdminDashboard() {
   // 4. Save announcement
   const handlePublishAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!annTitle || !annContent) return;
+    const errors: ValidationErrors = {
+      title: validateRequired(annTitle, 'Announcement title'),
+      content: validateRequired(annContent, 'Announcement content'),
+    };
+    if (hasErrors(errors)) {
+      setAnnouncementErrors(errors);
+      return;
+    }
+    setAnnouncementErrors({});
+
     setActionLoading(true);
     try {
       const res = await fetch('/api/super-admin/actions', {
@@ -1122,6 +1153,7 @@ export default function SuperAdminDashboard() {
                     placeholder="e.g. Scheduled System Upgrade"
                     value={annTitle}
                     onChange={(e) => setAnnTitle(e.target.value)}
+                    error={announcementErrors.title || undefined}
                   />
                   <Textarea
                     label="Announcement Content"
@@ -1130,6 +1162,7 @@ export default function SuperAdminDashboard() {
                     placeholder="Content details here..."
                     value={annContent}
                     onChange={(e) => setAnnContent(e.target.value)}
+                    error={announcementErrors.content || undefined}
                   />
                   <Select
                     label="Target Audience"
@@ -1235,6 +1268,7 @@ export default function SuperAdminDashboard() {
                           required
                           value={platformName}
                           onChange={(e) => setPlatformName(e.target.value)}
+                          error={settingsErrors.name || undefined}
                         />
                         <Input
                           label="Primary Brand Color (Hex)"
@@ -1250,12 +1284,14 @@ export default function SuperAdminDashboard() {
                           required
                           value={supportEmail}
                           onChange={(e) => setSupportEmail(e.target.value)}
+                          error={settingsErrors.email || undefined}
                         />
                         <Input
                           label="Support Contact Hotline"
                           required
                           value={supportPhone}
                           onChange={(e) => setSupportPhone(e.target.value)}
+                          error={settingsErrors.phone || undefined}
                         />
                       </div>
                       <Button type="submit" variant="primary" className="bg-primary hover:bg-primary-hover w-full mt-2" isLoading={actionLoading}>
@@ -1365,9 +1401,19 @@ export default function SuperAdminDashboard() {
                               <div className="font-bold text-text-primary">{job.filename}</div>
                               <div className="text-[10px] text-text-muted mt-0.5">{(job.size / 1024 / 1024).toFixed(2)} MB • Generated at: {new Date(job.createdAt).toLocaleString()}</div>
                             </div>
-                            <Badge variant="success" size="sm">
-                              {job.status}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              {job.downloadUrl && (
+                                <a
+                                  href={job.downloadUrl}
+                                  className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1"
+                                >
+                                  Download
+                                </a>
+                              )}
+                              <Badge variant="success" size="sm">
+                                {job.status}
+                              </Badge>
+                            </div>
                           </div>
                         ))
                       )}

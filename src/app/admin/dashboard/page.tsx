@@ -17,6 +17,14 @@ import {
   FileText, Trash2, Upload, Play, Pause, ChevronRight
 } from 'lucide-react';
 import type { Doctor, Patient } from '@/lib/mockData';
+import {
+  validateName,
+  validateEmail,
+  validatePhone,
+  validateRequired,
+  hasErrors,
+  type ValidationErrors,
+} from '@/lib/validation';
 
 interface AdminStaffMember {
   id: string;
@@ -180,6 +188,9 @@ export default function AdminDashboard() {
   const [profileWhatsApp, setProfileWhatsApp] = useState('');
   const [profileEmergPhone, setProfileEmergPhone] = useState('');
   const [profileSupportEmail, setProfileSupportEmail] = useState(currentClinic?.email || '');
+
+  const [staffErrors, setStaffErrors] = useState<ValidationErrors>({});
+  const [profileErrors, setProfileErrors] = useState<ValidationErrors>({});
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Doctor editing states
@@ -413,7 +424,17 @@ export default function AdminDashboard() {
   // 1. Staff invitation submit
   const handleInviteStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staffName || !staffEmail) return;
+    const errors: ValidationErrors = {
+      name: validateName(staffName, 'Staff name'),
+      email: validateEmail(staffEmail),
+      phone: staffPhone ? validatePhone(staffPhone) : null,
+      role: validateRequired(staffRole, 'Role'),
+    };
+    if (hasErrors(errors)) {
+      setStaffErrors(errors);
+      return;
+    }
+    setStaffErrors({});
 
     setStaffLoading(true);
     try {
@@ -466,6 +487,18 @@ export default function AdminDashboard() {
   // 2. Clinic Profile Update submit
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors: ValidationErrors = {
+      name: validateRequired(profileName, 'Clinic name'),
+      email: validateEmail(profileSupportEmail),
+      whatsapp: profileWhatsApp ? validatePhone(profileWhatsApp) : null,
+      emergency: profileEmergPhone ? validatePhone(profileEmergPhone) : null,
+    };
+    if (hasErrors(errors)) {
+      setProfileErrors(errors);
+      return;
+    }
+    setProfileErrors({});
+
     setProfileLoading(true);
     try {
       const res = await fetch('/api/admin/profile', {
@@ -1079,6 +1112,7 @@ export default function AdminDashboard() {
                     placeholder="e.g. Jane Miller"
                     value={staffName}
                     onChange={(e) => setStaffName(e.target.value)}
+                    error={staffErrors.name || undefined}
                   />
                   <Input
                     label="Email Address"
@@ -1087,11 +1121,13 @@ export default function AdminDashboard() {
                     placeholder="jane.miller@clinic.com"
                     value={staffEmail}
                     onChange={(e) => setStaffEmail(e.target.value)}
+                    error={staffErrors.email || undefined}
                   />
                   <Select
                     label="Assign Role"
                     value={staffRole}
                     onChange={(e) => setStaffRole(e.target.value)}
+                    error={staffErrors.role || undefined}
                     options={[
                       { value: 'RECEPTIONIST', label: 'Receptionist' },
                       { value: 'DOCTOR', label: 'Physician / Doctor' },
@@ -1183,6 +1219,7 @@ export default function AdminDashboard() {
                     required
                     value={profileName}
                     onChange={(e) => setProfileName(e.target.value)}
+                    error={profileErrors.name || undefined}
                   />
                   <Input
                     label="Support Contact Email"
@@ -1190,6 +1227,7 @@ export default function AdminDashboard() {
                     required
                     value={profileSupportEmail}
                     onChange={(e) => setProfileSupportEmail(e.target.value)}
+                    error={profileErrors.email || undefined}
                   />
                 </div>
 
@@ -1203,6 +1241,7 @@ export default function AdminDashboard() {
                     label="WhatsApp Contact Number"
                     value={profileWhatsApp}
                     onChange={(e) => setProfileWhatsApp(e.target.value)}
+                    error={profileErrors.whatsapp || undefined}
                   />
                 </div>
 
@@ -1218,6 +1257,7 @@ export default function AdminDashboard() {
                     label="Emergency Direct Line"
                     value={profileEmergPhone}
                     onChange={(e) => setProfileEmergPhone(e.target.value)}
+                    error={profileErrors.emergency || undefined}
                   />
                   <Input
                     label="Offered Services List (comma-separated)"

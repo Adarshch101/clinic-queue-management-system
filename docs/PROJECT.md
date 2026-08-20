@@ -161,7 +161,6 @@ See `.env.example`. All are required unless marked optional.
 | `SUPER_ADMIN_EMAIL` | Email that is granted **SUPER_ADMIN** on the platform |
 | `SUPER_ADMIN_PASSWORD` | Password used by `npm run db:seed` to create the Super Admin **Auth** login |
 | `SESSION_SECRET` | HMAC secret for the `q-clinix-session` cookie (long random string; required in production) |
-| `ENABLE_LOGIN_FALLBACK` | Optional; `"true"` enables the passwordless login-fallback endpoint (**dev only**, ignored in production) |
 | `SMTP_*`, `SMTP_FROM` | Optional email provider settings |
 
 ---
@@ -199,8 +198,8 @@ Binds a logged-in Supabase user to their profile row (adopt-only for privileged 
 ### Super Admin provisioning
 The Super Admin is **email-designated** (not stored as a DB profile row). `npm run db:seed` creates the matching **Supabase Auth user** (`auth.users` + `auth.identities`) with a bcrypt-hashed password (via `pgcrypto`), email-confirmed, so they can actually sign in. See `scripts/seed.mts`.
 
-### Login fallback (dev only)
-`POST /api/auth/login-fallback` is disabled unless `ENABLE_LOGIN_FALLBACK === "true"` **and** `NODE_ENV !== "production"` (returns 403). Rate-limited (10 req / 15 min).
+### Login
+Supabase is the only authentication provider. There is no passwordless fallback — login fails closed when Supabase is unreachable.
 
 ---
 
@@ -276,7 +275,6 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 |--------|------|------|-------------|
 | POST | `/api/auth/register` | — | Clinic registration → pending review (verifies Supabase token ownership) |
 | POST | `/api/auth/register-patient` | — | Patient registration (verifies Supabase token ownership) |
-| POST | `/api/auth/login-fallback` | — | Passwordless dev fallback (rate-limited, dev only) |
 | POST | `/api/auth/set-session` | — | Issue signed session cookie after Supabase sign-in (verifies token) |
 | GET | `/api/auth/session` | ✓ | Resolve current session/profile — requires cookie **or** Supabase Bearer matching the target `userId` |
 | GET | `/api/auth/me` | ✓ | Current user profile |
@@ -334,7 +332,8 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 | POST | `/api/super-admin/actions` | SUPER | Toggle flags, maintenance, settings, announcements, suspend |
 | GET | `/api/super-admin/users` | SUPER | Unified directory of all patients/staff (role+query filters) |
 | GET/POST | `/api/super-admin/settings` | SUPER | Platform settings read/update |
-| GET/POST | `/api/super-admin/backup` | SUPER | Backup jobs |
+| GET/POST | `/api/super-admin/backup` | SUPER | Backup jobs (history + trigger) |
+| GET | `/api/super-admin/backup/download` | SUPER | Download a backup dump (private dir, path-traversal safe) |
 
 ### Notifications & UX
 | Method | Path | Auth | Description |
@@ -378,14 +377,13 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 - **Security headers** — applied in `next.config.ts` **and** `src/proxy.ts`: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Strict-Transport-Security`, and a strict `Content-Security-Policy`.
 - **Route protection** — `proxy.ts` guards all dashboard routes and the Super Admin console; wrong-role users are sent to `/auth/denied`. Each dashboard also self-guards with `RoleGuard` (defense-in-depth).
 - **API authorization** — `apiAuth` helpers gate every sensitive handler; clinic-scoped data is double-checked via `sessionHasClinicAccess` (fail-closed). Ownership is derived from the session or a verified Supabase Bearer token, never from client-supplied IDs.
-- **PHI protection** — clinical data (diagnosis, prescriptions, notes, reports, patient names) is role-scoped and redacted for front-desk roles; the public clinic directory strips doctor contact details.
-- **Rate limiting** — in-memory `RateLimiter` (`src/lib/backend/middleware/rateLimiter.ts`) on sensitive endpoints (login fallback: 10/15 min; queue join: 5/min; registration: 10/hr).
+- **PHI protection** — clinical data (diagnosis, prescriptions, notes, reports, patient names) is role-scoped and redacted for front-desk roles; the public clinic directory strips doctor contact details. Uploaded file bytes (reports, verification documents, database backups) are stored **outside** `public/` and served only through authenticated, authorization-checked endpoints (`/api/files/report`, `/api/files/document`, `/api/super-admin/backup/download`) that re-check role + clinic access and block path traversal.
+- **Rate limiting** — in-memory `RateLimiter` (`src/lib/backend/middleware/rateLimiter.ts`) on sensitive endpoints (queue join: 5/min; registration: 10/hr).
 - **Secrets** — `.env` is gitignored; `.env.example` documents placeholders only; SMTP/Twilio/API keys are stored obfuscated in `IntegrationConfig`/`ApiKey` tables.
 
 ### Known residual risks (accepted)
-- `POST /api/auth/login-fallback` is a passwordless dev-only backdoor — hard-disabled in production and without `ENABLE_LOGIN_FALLBACK="true"`; remove it entirely before any shared deployment.
-- Uploaded medical documents are stored under `public/uploads/` and their bytes are fetchable by URL (the API gates the *listing* only). Move uploads outside `public/` and serve via an authenticated handler to fully close this.
 - `POST /api/auth/sync` auto-seeds a new PATIENT to the first clinic in the database (data-integrity caveat; not a privilege issue).
+- The in-memory rate limiter resets on server restart and is not shared across instances in a multi-instance deployment (best-effort only).
 
 ---
 
@@ -415,8 +413,8 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 - **MUI v9 `Stack`**: system props must live under `sx` (see §1).
 - **Dashboards are hash-driven**: sidebar links are native anchors (`…/dashboard#tab`); every dashboard syncs the hash to its active tab. Don't reintroduce a `Tabs` strip unless the sidebar is removed too.
 - **Super Admin is email-designated** — there is no DB row for it; changing `SUPER_ADMIN_EMAIL` without re-seeding/creating the Auth user breaks that login.
-- **Login fallback** returns 403 unless `ENABLE_LOGIN_FALLBACK="true"` and `NODE_ENV !== 'production'`. It remains a dev-only credential bypass — remove it before any shared deployment.
-- **Uploads are served from `public/uploads`** — the bytes are fetchable by URL even though the API gates listing. Move outside `public/` behind an authenticated handler before production.
+- **Login** — Supabase is the only authentication provider; there is no passwordless fallback, so authentication fails closed.
+- **Uploads are private** — medical reports, verification documents and backups are stored under `data/` (outside `public/`) and served only through authenticated, role/clinic-checked endpoints (`/api/files/report`, `/api/files/document`, `/api/super-admin/backup/download`).
 - **`/api/auth/sync` PATIENT auto-seed** binds a newly registered patient to the first clinic in the DB (they never chose it). Follow `register-patient` and leave `clinicId` null until the patient selects a clinic.
 - **Public TV display** (`/tv-display`) requires a staff session because the underlying queue endpoint is now staff-scoped.
 - **shadcn/ui tokens** — the shadcn utilities (`bg-card`, `text-foreground`, `bg-muted`, …) resolve via the `@theme inline` block in `globals.css`; do not add a second `@theme` definition with the same key (Tailwind v4 rejects duplicate theme variables).

@@ -27,10 +27,15 @@ export interface ResolvedProfile {
  * SUPER_ADMIN is granted when the email matches the SUPER_ADMIN_EMAIL env value.
  */
 export async function resolveProfile(userId: string, email?: string): Promise<ResolvedProfile> {
-  const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'admin@q-clinix.com').toLowerCase();
+  // SUPER_ADMIN is email-designated. In production a missing env value must be
+  // fail-closed (no email may match), never fall back to a well-known default.
+  const configuredSuperAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+  const superAdminEmail =
+    (configuredSuperAdminEmail ||
+      (process.env.NODE_ENV === 'production' ? '' : 'admin@q-clinix.com')).toLowerCase();
   const normalizedEmail = email?.toLowerCase();
 
-  if (normalizedEmail && normalizedEmail === superAdminEmail) {
+  if (normalizedEmail && superAdminEmail && normalizedEmail === superAdminEmail) {
     return {
       userId,
       name: 'Super Admin',

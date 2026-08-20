@@ -96,6 +96,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
+    const scheduledAt = new Date(dateTime);
+    if (Number.isNaN(scheduledAt.getTime())) {
+      return NextResponse.json({ error: 'Invalid dateTime value' }, { status: 400 });
+    }
+
     const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
     if (!doctor) {
       return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
@@ -128,7 +133,7 @@ export async function POST(request: Request) {
         clinicId: doctor.clinicId,
         patientId: patient.id,
         doctorId,
-        dateTime: new Date(dateTime),
+        dateTime: scheduledAt,
         reasonForVisit: reason,
         status: 'SCHEDULED',
       },

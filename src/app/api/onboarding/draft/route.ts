@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireClinicAccess, sessionHasClinicAccess } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
-  const auth = requireClinicAccess(request, ['ADMIN', 'SUPER_ADMIN']);
+  const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
       documents: documents.map(d => ({
         id: d.id,
         fileName: d.fileName,
-        fileUrl: d.fileUrl,
+        fileUrl: `/api/files/document?documentId=${d.id}`,
         fileType: d.fileType,
         documentType: d.documentType,
       })),
@@ -118,7 +118,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = requireClinicAccess(request, ['ADMIN', 'SUPER_ADMIN']);
+  const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 

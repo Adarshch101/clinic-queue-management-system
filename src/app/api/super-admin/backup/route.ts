@@ -11,7 +11,12 @@ export async function GET(request: Request) {
     const backups = await prisma.backupJob.findMany({
       orderBy: { createdAt: 'desc' }
     });
-    return NextResponse.json(backups);
+    return NextResponse.json(
+      backups.map((job) => ({
+        ...job,
+        downloadUrl: `/api/super-admin/backup/download?file=${encodeURIComponent(job.filename)}`,
+      }))
+    );
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }

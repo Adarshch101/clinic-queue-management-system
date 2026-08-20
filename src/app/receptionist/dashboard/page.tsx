@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import type { QueueToken } from '@/lib/mockData';
+import { validateName, validateAge, validatePhone, validateRequired, hasErrors, type ValidationErrors } from '@/lib/validation';
 import { 
   UserPlus, CalendarCheck, AlertTriangle, 
   Printer, Trash2, ChevronUp, ChevronDown, 
@@ -50,9 +51,22 @@ export default function ReceptionistDashboard() {
   const [printedSlip, setPrintedSlip] = useState<QueueToken | null>(null);
   const [registerLoading, setRegisterLoading] = useState(false);
 
+  const [walkInErrors, setWalkInErrors] = useState<ValidationErrors>({});
+
   const handleWalkInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!walkInName || !walkInAge || !walkInPhone || !walkInDocId || !walkInReason) return;
+    const errors: ValidationErrors = {
+      name: validateName(walkInName, 'Patient name'),
+      age: validateAge(walkInAge),
+      phone: validatePhone(walkInPhone),
+      doctorId: validateRequired(walkInDocId, 'Physician'),
+      reason: validateRequired(walkInReason, 'Reason for visit'),
+    };
+    if (hasErrors(errors)) {
+      setWalkInErrors(errors);
+      return;
+    }
+    setWalkInErrors({});
 
     setRegisterLoading(true);
     try {
@@ -146,6 +160,7 @@ export default function ReceptionistDashboard() {
                   placeholder="e.g. John Doe"
                   value={walkInName}
                   onChange={(e) => setWalkInName(e.target.value)}
+                  error={walkInErrors.name || undefined}
                 />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -156,6 +171,7 @@ export default function ReceptionistDashboard() {
                     placeholder="Age"
                     value={walkInAge}
                     onChange={(e) => setWalkInAge(e.target.value)}
+                    error={walkInErrors.age || undefined}
                   />
                   <Select
                     label="Gender"
@@ -176,6 +192,7 @@ export default function ReceptionistDashboard() {
                   placeholder="e.g. +1 (555) 123-4567"
                   value={walkInPhone}
                   onChange={(e) => setWalkInPhone(e.target.value)}
+                  error={walkInErrors.phone || undefined}
                 />
 
                 <Select
@@ -183,6 +200,7 @@ export default function ReceptionistDashboard() {
                   required
                   value={walkInDocId}
                   onChange={(e) => setWalkInDocId(e.target.value)}
+                  error={walkInErrors.doctorId || undefined}
                   options={[
                     { value: '', label: 'Choose Doctor...' },
                     ...doctors
@@ -197,6 +215,7 @@ export default function ReceptionistDashboard() {
                   placeholder="e.g. Flu symptoms, report review..."
                   value={walkInReason}
                   onChange={(e) => setWalkInReason(e.target.value)}
+                  error={walkInErrors.reason || undefined}
                 />
 
                 <Button

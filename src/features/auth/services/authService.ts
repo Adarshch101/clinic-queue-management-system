@@ -167,28 +167,18 @@ export const authService = {
   async login(email: string, password: string) {
     let authUser: User | null = null;
 
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    // Supabase is the only authentication provider. There is intentionally no
+    // passwordless fallback: failing closed prevents any credential bypass.
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (authError) throw authError;
-      authUser = authData.user;
-    } catch (err) {
-      console.warn('Supabase auth login failed, checking fallback PostgreSQL database records:', err);
-      const res = await fetch('/api/auth/login-fallback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      if (!res.ok) {
-        await this.logAuditEvent('anonymous', 'FAILED_LOGIN', `Failed login attempt for ${email}`);
-        throw new Error('Invalid email or password credentials');
-      }
-      const fallbackData = await res.json();
-      authUser = fallbackData.user;
+    if (authError) {
+      await this.logAuditEvent('anonymous', 'FAILED_LOGIN', `Failed login attempt for ${email}`);
+      throw authError;
     }
+    authUser = authData.user;
 
     if (!authUser) throw new Error('Authentication failed: No user returned');
 

@@ -21,7 +21,16 @@ export async function GET(request: Request) {
       }
     });
 
-    return NextResponse.json(clinics);
+    // Point document links at the auth-gated endpoint instead of the on-disk key.
+    const clinicDtos = clinics.map((c) => ({
+      ...c,
+      documents: c.documents.map((d) => ({
+        ...d,
+        fileUrl: `/api/files/document?documentId=${d.id}`,
+      })),
+    }));
+
+    return NextResponse.json(clinicDtos);
   } catch (error: unknown) {
     console.error('Fetch pending clinics list error:', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });

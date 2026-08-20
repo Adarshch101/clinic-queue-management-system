@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth, requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 import { saveUploadFile, getUploadFileSize, deleteUploadFile, formatFileSize } from '@/lib/fileStorage';
 
 export async function GET(request: Request) {
-  const auth = requireAuth(request);
+  const auth = requireRole(request, ['PATIENT', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
         id: r.id,
         patientId: r.patientId,
         fileName: r.fileName,
-        fileUrl: r.fileUrl,
+        fileUrl: `/api/files/report?reportId=${r.id}`,
         fileType: r.fileType.toLowerCase() === 'pdf' ? 'pdf' : 'image',
         reportType: r.reportType,
         uploadedAt: r.uploadedAt.toISOString(),
@@ -99,14 +99,14 @@ export async function POST(request: Request) {
       }
     }
 
-    // Persist the actual file bytes to local storage
-    const { fileUrl, size } = await saveUploadFile('reports', file);
+    // Persist the actual file bytes to private storage
+    const { fileKey, size } = await saveUploadFile('reports', file);
 
     const report = await prisma.medicalReport.create({
       data: {
         patientId: targetPatientId,
         fileName: file.name,
-        fileUrl,
+        fileUrl: fileKey,
         fileType,
         reportType,
       },
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       id: report.id,
       patientId: report.patientId,
       fileName: report.fileName,
-      fileUrl: report.fileUrl,
+      fileUrl: `/api/files/report?reportId=${report.id}`,
       fileType: report.fileType.toLowerCase() === 'pdf' ? 'pdf' : 'image',
       reportType: report.reportType,
       uploadedAt: report.uploadedAt.toISOString(),

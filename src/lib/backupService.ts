@@ -1,9 +1,14 @@
 import { prisma } from './prisma';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, writeFile, stat } from 'fs/promises';
 import path from 'path';
 import { format } from 'util';
 
-const BACKUP_DIR = path.join(process.cwd(), 'public', 'uploads', 'backups');
+// Backups are written OUTSIDE public/ so the raw SQL dumps (which contain
+// PHI, auth userIds and audit logs) can never be fetched by URL. They are
+// downloaded only through the SUPER_ADMIN-gated endpoint. The path is
+// statically scoped to <cwd>/data/backups so Turbopack does not trace the
+// whole project.
+const BACKUP_DIR = path.join(process.cwd(), 'data', 'backups');
 
 // Tables that make up a complete database dump
 const TABLES = [
@@ -53,13 +58,13 @@ function escapeSqlValue(value: unknown): string {
 }
 
 /**
- * Generates a real SQL dump of every table and writes it to
- * public/uploads/backups. Returns the real byte size of the file.
+ * Generates a real SQL dump of every table and writes it to a private
+ * directory outside public/. Returns a SUPER_ADMIN-gated download URL.
  */
 export async function createDatabaseBackup(): Promise<{ filename: string; fileUrl: string; size: number }> {
   const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
   const filename = `db_dump_${timestamp}.sql`;
-  const fileUrl = `/uploads/backups/${filename}`;
+  const fileUrl = `/api/super-admin/backup/download?file=${encodeURIComponent(filename)}`;
 
   const lines: string[] = [];
   lines.push('-- Q-Clinix database dump');
@@ -105,4 +110,24 @@ export function humanReadableSize(bytes: number): string {
         : '%s B',
     (bytes / (bytes > 1024 * 1024 ? 1024 * 1024 : bytes > 1024 ? 1024 : 1)).toFixed(2)
   );
+}
+
+/**
+ * Resolves a backup filename to an absolute path inside the private backup
+ * directory. Returns null when the name is empty, escapes the directory
+ * (path traversal), or points at a file that does not exist.
+ */
+export async function resolveBackupFilePath(filename: string): Promise<string | null> {
+  if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    return null;
+  }
+
+  const absPath = path.join(BACKUP_DIR, filename);
+  try {
+    const s = await stat(absPath);
+    if (!s.isFile()) return null;
+    return absPath;
+  } catch {
+    return null;
+  }
 }

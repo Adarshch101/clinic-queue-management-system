@@ -32,22 +32,41 @@ export const POST = withErrorHandler(async (request: Request) => {
     throw new AppError('Invalid clinic or doctor reference', 400);
   }
 
-  // 1. Find or create patient profile for phone number
-  let patient = await prisma.patient.findFirst({
-    where: { phone, clinicId },
-  });
+  // Resolve the session early: it controls both patient attribution and
+  // whether an emergency flag is honored.
+  const session = getSessionFromRequest(request);
 
-  if (!patient) {
-    patient = await prisma.patient.create({
-      data: {
-        clinicId,
-        name: name.trim(),
-        phone: phone.trim(),
-        age: parsedAge,
-        gender: gender || 'Male',
-        email: `${name.toLowerCase().replace(/[^a-z0-9]/g, '')}@temp-patient.com`,
-      },
+  // 1. Find or create patient profile for phone number.
+  // A logged-in PATIENT is always bound to their own profile row (by userId),
+  // never to a phone-matched row owned by someone else. Anonymous joiners fall
+  // back to phone-based find-or-create.
+  let patient: { id: string; clinicId: string | null; name: string; email: string | null } | null = null;
+
+  if (session && session.role === 'PATIENT') {
+    patient = await prisma.patient.findUnique({ where: { userId: session.userId } });
+    if (!patient) {
+      throw new AppError('Patient profile not found. Please complete registration first.', 404);
+    }
+    if (patient.clinicId !== clinicId) {
+      throw new AppError('You are not registered with this clinic', 403);
+    }
+  } else {
+    patient = await prisma.patient.findFirst({
+      where: { phone, clinicId },
     });
+
+    if (!patient) {
+      patient = await prisma.patient.create({
+        data: {
+          clinicId,
+          name: name.trim(),
+          phone: phone.trim(),
+          age: parsedAge,
+          gender: gender || 'Male',
+          email: `${name.toLowerCase().replace(/[^a-z0-9]/g, '')}@temp-patient.com`,
+        },
+      });
+    }
   }
 
   // 2. Find doctor
@@ -62,7 +81,6 @@ export const POST = withErrorHandler(async (request: Request) => {
 
   // Emergency flag is only honored for authenticated staff of this clinic.
   // Anonymous self-flagging is ignored (prevents public queue-jumping).
-  const session = getSessionFromRequest(request);
   const staffAuthorized =
     !!session && session.role !== 'PATIENT' && sessionHasClinicAccess(session, clinicId);
   const isStaffEmergency = staffAuthorized && isEmergency === true;

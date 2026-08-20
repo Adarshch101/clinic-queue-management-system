@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireClinicAccess, sessionHasClinicAccess } from '@/lib/apiAuth';
-import { saveUploadFile, deleteUploadFile } from '@/lib/fileStorage';
+import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
+import { saveUploadFile, deleteUploadFile, validateUploadFile } from '@/lib/fileStorage';
 
 export async function POST(request: Request) {
-  const auth = requireClinicAccess(request, ['ADMIN', 'SUPER_ADMIN']);
+  const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 
@@ -18,25 +18,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing clinicId, documentType or file' }, { status: 400 });
     }
 
+    const fileError = validateUploadFile(file);
+    if (fileError) {
+      return NextResponse.json({ error: fileError }, { status: 400 });
+    }
+
     if (!sessionHasClinicAccess(session, clinicId)) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
-    // Persist the actual file bytes to local storage
-    const { fileUrl } = await saveUploadFile('documents', file);
+    // Persist the actual file bytes to private storage
+    const { fileKey } = await saveUploadFile('documents', file);
 
     // Write document metadata record to PostgreSQL database
     const doc = await prisma.clinicDocument.create({
       data: {
         clinicId,
         fileName: file.name,
-        fileUrl,
+        fileUrl: fileKey,
         fileType: file.type || 'application/pdf',
         documentType,
       },
     });
 
-    return NextResponse.json(doc, { status: 201 });
+    return NextResponse.json(
+      {
+        ...doc,
+        fileUrl: `/api/files/document?documentId=${doc.id}`,
+      },
+      { status: 201 }
+    );
   } catch (error: unknown) {
     console.error('API upload error:', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
@@ -44,7 +55,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = requireClinicAccess(request, ['ADMIN', 'SUPER_ADMIN']);
+  const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 
@@ -62,9 +73,14 @@ export async function DELETE(request: Request) {
     }
 
     const doc = await prisma.clinicDocument.findUnique({ where: { id: documentId } });
-    if (doc) {
-      await deleteUploadFile(doc.fileUrl);
+    // Fail-closed: the document must exist AND belong to the caller's clinic.
+    // Checking only the clinicId query param would let an admin of clinic A
+    // delete clinic B's verification documents (cross-tenant IDOR).
+    if (!doc || doc.clinicId !== clinicId) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
+
+    await deleteUploadFile(doc.fileUrl);
 
     await prisma.clinicDocument.delete({
       where: { id: documentId },

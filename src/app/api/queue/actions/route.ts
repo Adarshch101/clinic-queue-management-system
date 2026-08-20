@@ -323,6 +323,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Missing doctorId or mins delay value' }, { status: 400 });
       }
 
+      const delayMins = Number.parseInt(mins, 10);
+      if (Number.isNaN(delayMins) || delayMins < 0 || delayMins > 240) {
+        return NextResponse.json({ error: 'Delay must be a number between 0 and 240 minutes' }, { status: 400 });
+      }
+
       const doctorDenied = await assertDoctorAccess(session, doctorId);
       if (doctorDenied) return doctorDenied;
 
@@ -334,7 +339,7 @@ export async function POST(request: Request) {
       for (const t of waitingTokens) {
         await prisma.queueToken.update({
           where: { id: t.id },
-          data: { estimatedWait: t.estimatedWait + parseInt(mins) },
+          data: { estimatedWait: t.estimatedWait + delayMins },
         });
       }
 

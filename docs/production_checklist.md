@@ -17,8 +17,8 @@ Verify all checklist items before launching the Clinic Queue Management Platform
 - [ ] Verify that API rate limiters are active on sensitive routes (Login, Register, Join Queue).
 - [ ] Check that security response headers (`X-Frame-Options`, `X-Content-Type-Options`) are active in `next.config.ts`.
 - [ ] Set a strong `SESSION_SECRET` in production (the session cookie is HMAC-signed with it).
-- [ ] Remove `ENABLE_LOGIN_FALLBACK` from production env (or ensure `NODE_ENV=production` blocks the fallback endpoint).
-- [ ] Confirm medical uploads are not publicly fetchable (move `public/uploads` behind an authenticated handler if not done).
+- [x] No passwordless login fallback exists (removed); Supabase is the only auth provider.
+- [x] Medical uploads are stored outside `public/` (in `data/`) and served only via authenticated, role/clinic-checked endpoints.
 - [ ] Spot-check RBAC: a RECEPTIONIST cannot call `/api/reports`, `/api/admin/*`, or `/api/super-admin/*`; a DOCTOR cannot reorder/transfer/cancel queue tokens; a clinic admin from clinic A cannot read clinic B data.
 - [ ] Verify the audit endpoint cannot be forged by clients (actor is derived from the session server-side).
 

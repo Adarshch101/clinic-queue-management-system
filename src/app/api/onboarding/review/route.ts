@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 import { NotificationEngine } from '@/lib/notificationEngine';
 
+const VALID_ACTIONS = new Set(['SUBMIT', 'APPROVE', 'REJECT']);
+
 export async function POST(request: Request) {
   const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
@@ -13,6 +15,10 @@ export async function POST(request: Request) {
 
     if (!clinicId || !action) {
       return NextResponse.json({ error: 'Missing clinicId or action' }, { status: 400 });
+    }
+
+    if (!VALID_ACTIONS.has(action)) {
+      return NextResponse.json({ error: 'Unknown review action' }, { status: 400 });
     }
 
     // Admins may only SUBMIT their own clinic; approval decisions are SUPER_ADMIN-only

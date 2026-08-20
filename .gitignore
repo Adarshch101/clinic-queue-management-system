@@ -37,6 +37,9 @@ yarn-error.log*
 # local uploads and backups
 /public/uploads/
 
+# private runtime data (never served statically)
+/data/
+
 # vercel
 .vercel
 
