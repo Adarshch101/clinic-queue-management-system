@@ -35,6 +35,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
     { href: '/queue-status', label: 'Live Queue' },
     { href: '/about', label: 'About' },
     { href: '/contact', label: 'Contact' },
+    { href: '/policies', label: 'Policies' },
   ];
 
   return (
@@ -175,6 +176,9 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
             </Button>
           ))}
           <Divider sx={{ my: 1 }} />
+          <Button component={NextLink} href="/policies" variant="outlined" fullWidth>
+            Policies
+          </Button>
           <Button component={NextLink} href="/login" variant="outlined" fullWidth>
             Portal Login
           </Button>
@@ -244,8 +248,9 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
                   Legal
                 </Typography>
                 <Stack spacing={0.75}>
-                  <Link href="#" color="text.secondary" underline="hover">Privacy Policy</Link>
-                  <Link href="#" color="text.secondary" underline="hover">Terms of Service</Link>
+                  <Link href="/privacy" color="text.secondary" underline="hover">Privacy Policy</Link>
+                  <Link href="/terms" color="text.secondary" underline="hover">Terms of Service</Link>
+                  <Link href="/policies" color="text.secondary" underline="hover">Policies</Link>
                   <Link href="#" color="text.secondary" underline="hover">HIPAA Audit</Link>
                 </Stack>
               </Box>
