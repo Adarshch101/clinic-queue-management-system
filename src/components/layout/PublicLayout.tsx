@@ -251,7 +251,7 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
                   <Link href="/privacy" color="text.secondary" underline="hover">Privacy Policy</Link>
                   <Link href="/terms" color="text.secondary" underline="hover">Terms of Service</Link>
                   <Link href="/policies" color="text.secondary" underline="hover">Policies</Link>
-                  <Link href="#" color="text.secondary" underline="hover">HIPAA Audit</Link>
+                  <Link href="/privacy" color="text.secondary" underline="hover">HIPAA Audit</Link>
                 </Stack>
               </Box>
             </Stack>
@@ -264,8 +264,8 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
               © 2026 Q-Clinix Inc. All rights reserved.
             </Typography>
             <Stack direction="row" spacing={2}>
-              <Link href="#" color="text.secondary" underline="hover" variant="caption">Twitter</Link>
-              <Link href="#" color="text.secondary" underline="hover" variant="caption">LinkedIn</Link>
+              <Link href="https://twitter.com" target="_blank" color="text.secondary" underline="hover" variant="caption">Twitter</Link>
+              <Link href="https://linkedin.com" target="_blank" color="text.secondary" underline="hover" variant="caption">LinkedIn</Link>
             </Stack>
           </Stack>
         </Container>
