@@ -10,6 +10,18 @@ const ANONYMOUS_ALLOWLIST = new Set(['FAILED_LOGIN', 'PASSWORD_RESET_REQUEST']);
 
 export async function POST(request: Request) {
   try {
+    // Ensure that the 'global' clinic exists for platform-wide audit logging
+    await prisma.clinic.upsert({
+      where: { id: 'global' },
+      update: {},
+      create: {
+        id: 'global',
+        name: 'Global SaaS Platform',
+        subdomain: 'global',
+        status: 'VERIFIED',
+      },
+    });
+
     const body = await request.json();
     const { userId, action, details, clinicId: inputClinicId } = body;
 

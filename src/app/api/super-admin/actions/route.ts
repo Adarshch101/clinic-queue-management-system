@@ -8,6 +8,29 @@ const STAFF_ROLES = ['PATIENT', 'RECEPTIONIST', 'DOCTOR', 'ADMIN'] as const;
 type StaffRole = (typeof STAFF_ROLES)[number];
 
 async function resolveProfileByUserId(userId: string) {
+  // First, query public.profiles table
+  try {
+    const supaProfiles = await prisma.$queryRawUnsafe<
+      { role: string; clinic_id: string | null; full_name: string | null; email: string | null }[]
+    >(
+      'SELECT * FROM public.profiles WHERE id = $1::uuid LIMIT 1',
+      userId
+    );
+    if (supaProfiles && supaProfiles.length > 0) {
+      const supaProfile = supaProfiles[0];
+      return {
+        table: 'profiles' as const,
+        name: supaProfile.full_name || 'User',
+        email: supaProfile.email || '',
+        role: supaProfile.role as StaffRole,
+        clinicId: supaProfile.clinic_id || undefined,
+      };
+    }
+  } catch (error) {
+    console.error('Error resolving profile by user ID in actions route:', error);
+  }
+
+  // Fallback to legacy tables
   const [patient, admin, doctor, receptionist] = await Promise.all([
     prisma.patient.findUnique({ where: { userId } }),
     prisma.clinicAdmin.findUnique({ where: { userId } }),
@@ -43,6 +66,18 @@ export async function POST(request: Request) {
   const { session } = auth;
 
   try {
+    // Ensure that the 'global' clinic exists for platform-wide audit logging
+    await prisma.clinic.upsert({
+      where: { id: 'global' },
+      update: {},
+      create: {
+        id: 'global',
+        name: 'Global SaaS Platform',
+        subdomain: 'global',
+        status: 'VERIFIED',
+      },
+    });
+
     const body = await request.json();
     const { action } = body;
 
@@ -377,15 +412,6 @@ export async function POST(request: Request) {
 
       const title =
         type === 'WARNING' ? 'Warning from Platform Administrator' : 'Appreciation from Platform Administrator';
-
-      await prisma.notification.create({
-        data: {
-          recipientUserId: userId,
-          title,
-          body: message.trim(),
-          channel: 'PUSH',
-        },
-      });
 
       NotificationEngine.dispatchEvent('SUPER_ADMIN_MESSAGE', {
         userId,
