@@ -21,11 +21,14 @@ export default function AccessDenied() {
           </p>
         </div>
 
-        <Link href="/" className="w-full">
-          <Button variant="primary" className="w-full">
-            <ArrowLeft className="w-4 h-4 shrink-0" /> Return to Home
-          </Button>
-        </Link>
+        <div className="flex flex-col gap-2">
+          <Link href="/" className="text-sm text-text-secondary hover:text-text-primary transition">
+            <ArrowLeft className="w-4 h-4 shrink-0 mr-2" /> Return to Home
+          </Link>
+          <Link href="/login" className="text-sm text-text-secondary hover:text-text-primary transition">
+            <ArrowLeft className="w-4 h-4 shrink-0 mr-2" /> Login
+          </Link>
+        </div>
       </div>
     </PublicLayout>
   );

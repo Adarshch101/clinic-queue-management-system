@@ -16,6 +16,20 @@ async function main() {
   const prisma = new PrismaClient({ adapter });
 
   try {
+    // Ensure the global clinic exists (required for platform-wide/super-admin audit logs)
+    await prisma.clinic.upsert({
+      where: { id: 'global' },
+      update: {},
+      create: {
+        id: 'global',
+        name: 'Global Platform',
+        subdomain: 'global',
+        primaryColor: '#3b82f6',
+        status: 'VERIFIED',
+      },
+    });
+    console.log('Global clinic ensured.');
+
     // 1. Platform settings (the single row the super admin dashboard manages).
     const existing = await prisma.platformSettings.findFirst();
     if (existing) {

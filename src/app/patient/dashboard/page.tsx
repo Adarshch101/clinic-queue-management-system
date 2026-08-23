@@ -11,6 +11,14 @@ import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/Table';
+import {
   validateRequired,
   validateReason,
   validateDateTime,
@@ -390,19 +398,43 @@ export default function PatientDashboard() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
                   Recently Shared ({reports.length})
                 </span>
-                <div className="flex flex-col gap-2">
-                  {reports.map((rep) => (
-                    <div key={rep.id} className="flex justify-between items-center text-xs p-2.5 rounded-xl border border-border-subtle bg-bg-muted/10">
-                      <div className="flex items-center gap-2 truncate pr-2">
-                        <FileText className="w-4 h-4 text-primary shrink-0" />
-                        <div className="truncate font-semibold">
-                          <div className="text-text-primary truncate">{rep.fileName}</div>
-                          <div className="text-[9px] text-text-muted mt-0.5 font-bold uppercase tracking-wider">{rep.reportType}</div>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-bold text-text-muted shrink-0">{rep.size}</span>
-                    </div>
-                  ))}
+                <div className="overflow-hidden border border-border-subtle rounded-2xl bg-bg-surface">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="px-3">File Name / Type</TableHead>
+                        <TableHead className="text-right px-3">Size</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reports.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={2} className="py-6 text-center text-xs text-text-muted">
+                            No shared medical reports found.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        reports.map((rep) => (
+                          <TableRow key={rep.id}>
+                            <TableCell className="px-3 py-2">
+                              <div className="flex items-center gap-2 truncate pr-2">
+                                <FileText className="w-4 h-4 text-primary shrink-0" />
+                                <div className="truncate font-semibold">
+                                  <div className="text-text-primary truncate">{rep.fileName}</div>
+                                  <div className="text-[9px] text-text-muted mt-0.5 font-bold uppercase tracking-wider">
+                                    {rep.reportType}
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right text-[10px] font-bold text-text-muted px-3 py-2">
+                              {rep.size}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
             </Card>

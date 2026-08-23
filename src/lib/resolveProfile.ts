@@ -35,6 +35,78 @@ export async function resolveProfile(userId: string, email?: string): Promise<Re
       (process.env.NODE_ENV === 'production' ? '' : 'admin@q-clinix.com')).toLowerCase();
   const normalizedEmail = email?.toLowerCase();
 
+  // First, check the unified profiles table in Supabase
+  try {
+    const supaProfiles = await prisma.$queryRawUnsafe<
+      { role: string; clinic_id: string | null; full_name: string | null; email: string | null }[]
+    >(
+      'SELECT * FROM public.profiles WHERE id = $1::uuid LIMIT 1',
+      userId
+    );
+    if (supaProfiles && supaProfiles.length > 0) {
+      const supaProfile = supaProfiles[0];
+      const roleMap: Record<string, ResolvedRole> = {
+        'patient': 'PATIENT',
+        'doctor': 'DOCTOR',
+        'receptionist': 'RECEPTIONIST',
+        'admin': 'ADMIN',
+        'super_admin': 'SUPER_ADMIN',
+      };
+      const role = roleMap[supaProfile.role] || 'PATIENT';
+      
+      // Determine clinic status from the Clinic table if clinic_id exists
+      let clinicStatus: ClinicStatus | undefined = 'VERIFIED';
+      if (supaProfile.clinic_id) {
+        const clinic = await prisma.clinic.findUnique({
+          where: { id: supaProfile.clinic_id },
+          select: { status: true },
+        });
+        if (clinic) {
+          clinicStatus = clinic.status as ClinicStatus;
+        }
+      }
+
+      // Get permissions
+      const dbPermissions = await prisma.permission.findMany({
+        where: { role },
+      });
+      let permissions = dbPermissions.map((p) => `${p.action}_${p.resource}`);
+      if (permissions.length === 0) {
+        if (role === 'SUPER_ADMIN') {
+          permissions = ['*'];
+        } else if (role === 'ADMIN') {
+          permissions = [
+            'MANAGE_CLINIC',
+            'MANAGE_STAFF',
+            'VIEW_QUEUE',
+            'EDIT_QUEUE',
+            'DELETE_QUEUE',
+            'VIEW_REPORTS',
+            'MANAGE_SETTINGS',
+          ];
+        } else if (role === 'DOCTOR') {
+          permissions = ['VIEW_QUEUE', 'EDIT_QUEUE', 'CONSULT_PATIENTS', 'VIEW_PATIENT_FILES'];
+        } else if (role === 'RECEPTIONIST') {
+          permissions = ['VIEW_QUEUE', 'EDIT_QUEUE', 'CREATE_QUEUE_TICKET', 'CHECK_IN_PATIENTS'];
+        } else {
+          permissions = ['SEARCH_CLINICS', 'JOIN_QUEUE', 'TRACK_QUEUE'];
+        }
+      }
+
+      return {
+        userId,
+        name: supaProfile.full_name || 'User',
+        email: supaProfile.email || '',
+        role,
+        clinicId: supaProfile.clinic_id || undefined,
+        clinicStatus,
+        permissions,
+      };
+    }
+  } catch (error) {
+    console.error('Error resolving profile from profiles table:', error);
+  }
+
   if (normalizedEmail && superAdminEmail && normalizedEmail === superAdminEmail) {
     return {
       userId,

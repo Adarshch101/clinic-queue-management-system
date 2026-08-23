@@ -37,6 +37,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshProfile = async () => {
     try {
+      // Check server-side signed session cookie first (more reliable for cross-page state)
+      const meRes = await fetch('/api/auth/me');
+      if (meRes.ok) {
+        const p = await meRes.json();
+        setUser({
+          id: p.userId,
+          email: `${p.role?.toLowerCase() || 'user'}@q-clinix.com`,
+          user_metadata: { name: p.role }
+        } as unknown as User);
+        setProfile(p);
+        // Also sync Supabase session if needed
+        try {
+          await supabase.auth.getSession();
+        } catch {}
+        return;
+      }
+
+      // Fallback: check Supabase auth session
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
@@ -44,21 +62,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const p = await authService.getCurrentSessionProfile(session.user.id, session.user.email);
         setProfile(p);
       } else {
-        // No Supabase session — check for a valid signed server-side session cookie
-        const meRes = await fetch('/api/auth/me');
-        if (meRes.ok) {
-          const p = await meRes.json();
-          setUser({
-            id: p.userId,
-            email: `${p.role?.toLowerCase() || 'user'}@q-clinix.com`,
-            user_metadata: { name: p.role }
-          } as unknown as User);
-          setProfile(p);
-        } else {
-          setUser(null);
-          setProfile(null);
-          initializeTempSession();
-        }
+        // No valid session — initialize temp session for anonymous patients
+        setUser(null);
+        setProfile(null);
+        initializeTempSession();
       }
     } catch (err) {
       console.error('Failed to sync session profile:', err);

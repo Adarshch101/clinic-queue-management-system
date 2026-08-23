@@ -260,13 +260,58 @@ export const authService = {
     return { user: authUser, profile: sessionProfile };
   },
 
-  // Get logged-in user profile details and role permissions
+// Get logged-in user profile details and role permissions
   async getCurrentSessionProfile(userId: string, email?: string): Promise<UserSessionProfile> {
+    // First check the unified profiles table in Supabase
+    const { data: supaProfile, error: supaError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (supaProfile && !supaError) {
+      const roleMap: Record<string, UserSessionProfile['role']> = {
+        'patient': 'PATIENT',
+        'doctor': 'DOCTOR',
+        'receptionist': 'RECEPTIONIST',
+        'admin': 'ADMIN',
+        'super_admin': 'SUPER_ADMIN',
+      };
+
+      const role = roleMap[supaProfile.role] || 'PATIENT';
+
+      // Determine clinic status from the clinics table if clinic_id exists
+      let clinicStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED' | 'INACTIVE' = 'VERIFIED';
+      if (supaProfile.clinic_id) {
+        const { data: clinic, error: clinicError } = await supabase
+          .from('clinics')
+          .select('status')
+          .eq('id', supaProfile.clinic_id)
+          .single();
+        if (clinic && !clinicError) {
+          clinicStatus = clinic.status as 'PENDING' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED' | 'INACTIVE';
+        }
+      }
+
+      const displayName = supaProfile.full_name || (email ? email.split('@')[0] : 'User');
+
+      return {
+        userId,
+        name: displayName,
+        email: email || '',
+        role,
+        clinicId: supaProfile.clinic_id,
+        clinicStatus,
+        permissions: this.getPermissionsForRole(role),
+      };
+    }
+
+    // Fallback: use the existing API endpoint
     const url = email
       ? `/api/auth/session?userId=${userId}&email=${encodeURIComponent(email)}`
       : `/api/auth/session?userId=${userId}`;
 
-    // Attach the Supabase access token so the server can verify that the
+    // Attach the Supabase access token so the caller can verify that the
     // caller owns the requested profile (prevents profile enumeration).
     const { data: { session } } = await supabase.auth.getSession();
     const headers: Record<string, string> = {};
@@ -280,6 +325,27 @@ export const authService = {
       throw new Error(err.error || 'Failed to fetch session profile');
     }
     return res.json();
+  },
+
+  // Helper to get permissions based on role
+  getPermissionsForRole(role: UserSessionProfile['role']): string[] {
+    const basePermissions: Record<UserSessionProfile['role'], string[]> = {
+      PATIENT: ['SEARCH_CLINICS', 'JOIN_QUEUE', 'TRACK_QUEUE'],
+      RECEPTIONIST: ['VIEW_QUEUE', 'EDIT_QUEUE', 'CREATE_QUEUE_TICKET', 'CHECK_IN_PATIENTS'],
+      DOCTOR: ['VIEW_QUEUE', 'EDIT_QUEUE', 'CONSULT_PATIENTS', 'VIEW_PATIENT_FILES'],
+      ADMIN: [
+        'MANAGE_CLINIC',
+        'MANAGE_STAFF',
+        'VIEW_QUEUE',
+        'EDIT_QUEUE',
+        'DELETE_QUEUE',
+        'VIEW_REPORTS',
+        'MANAGE_SETTINGS',
+      ],
+      SUPER_ADMIN: ['*'],
+    };
+
+    return basePermissions[role] || basePermissions.PATIENT;
   },
 
   // Forgot Password / Reset Link trigger
