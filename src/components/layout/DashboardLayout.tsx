@@ -167,7 +167,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         return [
           { section: 'Tenants', items: [
             { href: '/admin/super-dashboard#clinics', label: 'Clinic Directory', icon: <Building className="w-4 h-4" /> },
-            { href: '/admin/super-dashboard#users', label: 'User Management', icon: <Users className="w-4 h-4" /> },
+            { href: '/admin/super-dashboard#clinic-management', label: 'Clinic Management', icon: <Users className="w-4 h-4" /> },
+            { href: '/admin/super-dashboard#users', label: 'User Management', icon: <UserCheck className="w-4 h-4" /> },
             { href: '/admin/super-dashboard#verifications', label: 'Verification Reviews', icon: <Sparkles className="w-4 h-4" /> },
           ]},
           { section: 'System', items: [

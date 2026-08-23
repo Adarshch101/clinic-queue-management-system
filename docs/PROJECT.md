@@ -349,7 +349,7 @@ Convention: auth required unless noted. Errors from `withErrorHandler` routes us
 
 ## 10. Frontend Routes & Features
 
-- **Public**: `/` (landing + clinic search + join queue), `/clinics`, `/clinics/[id]`, `/queue-status`, `/tv-display`, `/about`, `/contact`. Rendered in `PublicLayout` (MUI header/drawer/footer).
+- **Public**: `/` (landing + clinic search + join queue), `/clinics`, `/clinics/[id]`, `/queue-status`, `/tv-display`, `/about`, `/contact`, `/privacy`, `/terms`. Rendered in `PublicLayout` (MUI header/drawer/footer).
 - **Auth**: `/login`, `/register` (MUI split-screen `AuthLayout`), `/auth/{pending,rejected,suspended,denied,forgot-password,reset-password,onboarding}`.
 - **Dashboards** (in `DashboardLayout`):
   - `/admin/dashboard` — Clinic Operational Hub (hash-driven tabs: overview, queue, patients, doctors, staff, clinic, profile, documents, analytics, ai, subscription). The `#reviews` tab is SUPER_ADMIN-only (ADMIN is redirected to overview).

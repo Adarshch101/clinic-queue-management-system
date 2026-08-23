@@ -62,10 +62,15 @@ export async function POST(request: Request) {
       // Audit log
       await prisma.auditLog.create({
         data: {
-          clinicId: 'global',
+          clinicId: undefined,
           userId: resolvedAdminId,
           userRole: 'SUPER_ADMIN',
           action: 'TOGGLE_FEATURE_FLAG',
+          clinic: {
+            connect: {
+              id: 'global',
+            },
+          },
           details: `Feature flag ${flagName} set to ${isEnabled}`,
         },
       });
@@ -82,10 +87,15 @@ export async function POST(request: Request) {
       // Audit log
       await prisma.auditLog.create({
         data: {
-          clinicId: 'global',
+          clinicId: undefined,
           userId: resolvedAdminId,
           userRole: 'SUPER_ADMIN',
           action: 'TOGGLE_MAINTENANCE_MODE',
+          clinic: {
+            connect: {
+              id: 'global',
+            },
+          },
           details: `Platform maintenance mode set to ${isEnabled}`,
         },
       });
@@ -161,10 +171,15 @@ export async function POST(request: Request) {
       // Audit log
       await prisma.auditLog.create({
         data: {
-          clinicId: 'global',
+          clinicId: undefined,
           userId: resolvedAdminId,
           userRole: 'SUPER_ADMIN',
           action: 'PUBLISH_ANNOUNCEMENT',
+          clinic: {
+            connect: {
+              id: 'global',
+            },
+          },
           details: `Announcement published: "${title}"`,
         },
       });
@@ -180,10 +195,15 @@ export async function POST(request: Request) {
       // Audit log
       await prisma.auditLog.create({
         data: {
-          clinicId: 'global',
+          clinicId: undefined,
           userId: resolvedAdminId,
           userRole: 'SUPER_ADMIN',
           action: 'DELETE_CLINIC',
+          clinic: {
+            connect: {
+              id: 'global',
+            },
+          },
           details: `Clinic deleted permanently: ID ${clinicId}`,
         },
       });

@@ -230,7 +230,7 @@ RBAC is enforced in **three layers**:
 
 ## Frontend Routes
 
-- **Public:** `/` (landing + search + join queue), `/clinics`, `/clinics/[id]`, `/queue-status`, `/tv-display`, `/about`, `/contact`.
+- **Public:** `/` (landing + search + join queue), `/clinics`, `/clinics/[id]`, `/queue-status`, `/tv-display`, `/about`, `/contact`, `/privacy`, `/terms`.
 - **Auth:** `/login`, `/register`, `/register/patient`, `/auth/{pending,rejected,suspended,denied,forgot-password,reset-password,onboarding}`.
 - **Dashboards:** `/admin/dashboard` (hash-driven tabs), `/admin/super-dashboard`, `/doctor/dashboard`, `/receptionist/dashboard`, `/patient/dashboard`.
 
@@ -239,6 +239,10 @@ RBAC is enforced in **three layers**:
 ## API Overview
 
 Convention: auth required unless noted. Errors from `withErrorHandler` routes use `{ success, message, errors? }`.
+
+### Public Pages
+- `/privacy` — Privacy Policy
+- `/terms` — Terms of Service
 
 | Area | Endpoints |
 |------|-----------|

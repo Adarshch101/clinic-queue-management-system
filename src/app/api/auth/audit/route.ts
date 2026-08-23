@@ -40,7 +40,10 @@ export async function POST(request: Request) {
 
       const log = await prisma.auditLog.create({
         data: {
-          clinicId: resolvedClinicId || 'global',
+          clinicId:
+            session.role === 'SUPER_ADMIN'
+              ? resolvedClinicId || 'global'
+              : resolvedClinicId ?? '',
           userId: session.userId,
           userRole: session.role as Role,
           action,
@@ -62,12 +65,17 @@ export async function POST(request: Request) {
 
     const log = await prisma.auditLog.create({
       data: {
-        clinicId: inputClinicId || 'global',
+        clinicId: inputClinicId || undefined,
         userId: 'anonymous',
         userRole: 'PATIENT',
         action,
         details,
         ipAddress: request.headers.get('x-forwarded-for') || '127.0.0.1',
+        clinic: {
+          connect: {
+            id: 'global',
+          },
+        },
       },
     });
 

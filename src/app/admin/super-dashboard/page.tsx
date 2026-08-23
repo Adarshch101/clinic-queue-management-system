@@ -9,6 +9,17 @@ import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
+import Avatar from '@mui/material/Avatar';
+import Chip from '@mui/material/Chip';
+import Tooltip from '@mui/material/Tooltip';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/Table';
 import {
   validateEmail,
   validatePhone,
@@ -223,8 +234,15 @@ export default function SuperAdminDashboard() {
   const [platformUsers, setPlatformUsers] = useState<SuperPlatformUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersQuery, setUsersQuery] = useState('');
-  const [usersRoleFilter, setUsersRoleFilter] = useState('ALL');
+  const [usersRoleFilter] = useState('PATIENT');
   const [userActionLoading, setUserActionLoading] = useState<string | null>(null);
+
+  // Clinic Management States (Admins, Doctors, Staff)
+  const [clinicUsers, setClinicUsers] = useState<SuperPlatformUser[]>([]);
+  const [clinicUsersLoading, setClinicUsersLoading] = useState(false);
+  const [clinicUsersQuery, setClinicUsersQuery] = useState('');
+  const [clinicUsersClinicFilter, setClinicUsersClinicFilter] = useState('');
+  const [clinicUsersRoleFilter, setClinicUsersRoleFilter] = useState('ALL');
 
   // Clinic-scoped analytics selector
   const [selectedClinicId, setSelectedClinicId] = useState('');
@@ -280,6 +298,32 @@ export default function SuperAdminDashboard() {
     const id = setTimeout(() => fetchPlatformUsers(), 0);
     return () => clearTimeout(id);
   }, [activeTab, fetchPlatformUsers]);
+
+  const fetchClinicUsers = useCallback(async () => {
+    setClinicUsersLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (clinicUsersQuery.trim()) params.set('query', clinicUsersQuery.trim());
+      const res = await fetch(`/api/super-admin/users?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        const allUsers: SuperPlatformUser[] = data.users || [];
+        // Filter out PATIENTs
+        const staffUsers = allUsers.filter((u) => u.role !== 'PATIENT');
+        setClinicUsers(staffUsers);
+      }
+    } catch (e) {
+      console.error('Error fetching clinic users:', e);
+    } finally {
+      setClinicUsersLoading(false);
+    }
+  }, [clinicUsersQuery]);
+
+  useEffect(() => {
+    if (activeTab !== 'clinic-management') return;
+    const id = setTimeout(() => fetchClinicUsers(), 0);
+    return () => clearTimeout(id);
+  }, [activeTab, fetchClinicUsers]);
 
   const fetchGlobalAnalytics = async () => {
     setLoadingGlobalAnalytics(true);
@@ -525,7 +569,11 @@ export default function SuperAdminDashboard() {
       const data = await res.json();
       if (res.ok) {
         alert(`User "${u.name}" deleted.`);
-        fetchPlatformUsers();
+        if (activeTab === 'clinic-management') {
+          fetchClinicUsers();
+        } else {
+          fetchPlatformUsers();
+        }
       } else {
         alert(data.error || 'Failed to delete user.');
       }
@@ -554,7 +602,11 @@ export default function SuperAdminDashboard() {
       const data = await res.json();
       if (res.ok) {
         alert(`Role changed to ${newRole}.`);
-        fetchPlatformUsers();
+        if (activeTab === 'clinic-management') {
+          fetchClinicUsers();
+        } else {
+          fetchPlatformUsers();
+        }
       } else {
         alert(data.error || 'Failed to change role.');
       }
@@ -1720,7 +1772,191 @@ export default function SuperAdminDashboard() {
                 </div>
               </>
             )}
+          </div>
+        )}
 
+        {/* TAB 9.5: CLINIC MANAGEMENT (STAFF/ADMINS) */}
+        {activeTab === 'clinic-management' && (
+          <div className="flex flex-col gap-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h3 className="font-extrabold text-sm text-text-primary">Clinic Management</h3>
+                <p className="text-[10px] text-text-muted mt-0.5">Manage admins, doctors, and front-desk staff across clinics</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-end sm:items-center">
+                <Select
+                  value={clinicUsersClinicFilter}
+                  onChange={(e) => setClinicUsersClinicFilter(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Clinics' },
+                    ...clinics.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
+                  className="w-full sm:w-44 bg-bg-surface text-xs font-bold"
+                />
+                <Select
+                  value={clinicUsersRoleFilter}
+                  onChange={(e) => setClinicUsersRoleFilter(e.target.value)}
+                  options={[
+                    { value: 'ALL', label: 'All Roles' },
+                    { value: 'ADMIN', label: 'Clinic Admins' },
+                    { value: 'DOCTOR', label: 'Doctors' },
+                    { value: 'RECEPTIONIST', label: 'Receptionists' },
+                  ]}
+                  className="w-full sm:w-40 bg-bg-surface text-xs font-bold"
+                />
+                <Input
+                  isSearch
+                  placeholder="Search staff name, email..."
+                  value={clinicUsersQuery}
+                  onChange={(e) => setClinicUsersQuery(e.target.value)}
+                  className="w-full sm:max-w-[280px]"
+                />
+              </div>
+            </div>
+
+            {clinicUsersLoading ? (
+              <div className="flex flex-col gap-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 rounded-2xl bg-bg-muted animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <Card className="overflow-hidden border border-border-subtle">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff Member</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead className="hidden sm:table-cell">Clinic</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(() => {
+                      const filtered = clinicUsers.filter((u) => {
+                        if (clinicUsersClinicFilter && u.clinicId !== clinicUsersClinicFilter) return false;
+                        if (clinicUsersRoleFilter !== 'ALL' && u.role !== clinicUsersRoleFilter) return false;
+                        return true;
+                      });
+
+                      if (filtered.length === 0) {
+                        return (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-10 text-center text-xs text-text-muted">
+                              No clinic users match the current filters.
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+
+                      return filtered.map((u) => (
+                        <TableRow key={`${u.role}-${u.id}`}>
+                          <TableCell>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <Avatar
+                                sx={{
+                                  width: 32,
+                                  height: 32,
+                                  fontSize: '11px',
+                                  fontWeight: 'black',
+                                  background: 'linear-gradient(to top right, var(--color-primary), #818cf8)',
+                                  color: 'white',
+                                }}
+                              >
+                                {u.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <div className="truncate">
+                                <div className="text-text-primary font-bold truncate">{u.name}</div>
+                                <div className="text-[9px] text-text-muted uppercase tracking-wider">
+                                  {u.userId ? (u.userId.startsWith('staff-auth') ? 'Invited' : 'Registered') : 'Walk-in'}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="truncate">{u.email || '—'}</TableCell>
+                          <TableCell className="hidden sm:table-cell truncate">{u.clinicName}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={u.role}
+                              size="small"
+                              color={u.role === 'ADMIN' ? 'primary' : u.role === 'DOCTOR' ? 'success' : 'warning'}
+                              sx={{
+                                fontSize: '9px',
+                                fontWeight: 900,
+                                textTransform: 'uppercase',
+                                height: '20px',
+                                borderRadius: '6px',
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              <select
+                                value={u.role}
+                                disabled={!u.userId || userActionLoading !== null}
+                                onChange={(e) => handleChangeUserRole(u, e.target.value)}
+                                className="p-1.5 border border-border-subtle rounded-lg bg-bg-surface text-[11px] font-bold text-text-primary focus:outline-none disabled:opacity-50"
+                              >
+                                <option value="RECEPTIONIST">Receptionist</option>
+                                <option value="DOCTOR">Doctor</option>
+                                <option value="ADMIN">Clinic Admin</option>
+                              </select>
+
+                              <Tooltip title="Send warning message to this staff member" arrow>
+                                <span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!u.userId || userActionLoading !== null}
+                                    isLoading={userActionLoading === `warning-${u.id}`}
+                                    onClick={() => handleSendUserMessage(u, 'WARNING')}
+                                    className="text-[11px] border-amber-500/60 text-amber-600 hover:bg-amber-500/10 min-h-[32px]"
+                                  >
+                                    Warn
+                                  </Button>
+                                </span>
+                              </Tooltip>
+
+                              <Tooltip title="Send appreciation message to this staff member" arrow>
+                                <span>
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    disabled={!u.userId || userActionLoading !== null}
+                                    isLoading={userActionLoading === `appreciation-${u.id}`}
+                                    onClick={() => handleSendUserMessage(u, 'APPRECIATION')}
+                                    className="text-[11px] min-h-[32px]"
+                                  >
+                                    Appreciate
+                                  </Button>
+                                </span>
+                              </Tooltip>
+
+                              <Tooltip title="Permanently delete staff profile" arrow>
+                                <span>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    disabled={userActionLoading !== null}
+                                    isLoading={userActionLoading === `delete-${u.id}`}
+                                    onClick={() => handleDeleteUser(u)}
+                                    className="text-[11px] min-h-[32px]"
+                                  >
+                                    Delete
+                                  </Button>
+                                </span>
+                              </Tooltip>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ));
+                    })()}
+                  </TableBody>
+                </Table>
+              </Card>
+            )}
           </div>
         )}
 
@@ -1729,25 +1965,14 @@ export default function SuperAdminDashboard() {
           <div className="flex flex-col gap-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h3 className="font-extrabold text-sm text-text-primary">Platform User Directory</h3>
-                <p className="text-[10px] text-text-muted mt-0.5">Every patient, staff member, doctor, and clinic admin across all tenants</p>
+                <h3 className="font-extrabold text-sm text-text-primary">Patient Directory</h3>
+                <p className="text-[10px] text-text-muted mt-0.5">Every patient registered across all tenants</p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <select
-                  value={usersRoleFilter}
-                  onChange={(e) => setUsersRoleFilter(e.target.value)}
-                  className="p-2 border border-border-subtle rounded-xl bg-bg-surface text-xs font-bold text-text-primary focus:outline-none shrink-0"
-                >
-                  <option value="ALL">All Roles</option>
-                  <option value="ADMIN">Clinic Admins</option>
-                  <option value="DOCTOR">Doctors</option>
-                  <option value="RECEPTIONIST">Staff</option>
-                  <option value="PATIENT">Patients</option>
-                </select>
                 <Input
                   isSearch
-                  placeholder="Search name, email, clinic..."
+                  placeholder="Search patient name, email, clinic..."
                   value={usersQuery}
                   onChange={(e) => setUsersQuery(e.target.value)}
                   className="w-full sm:max-w-[280px]"
@@ -1762,96 +1987,130 @@ export default function SuperAdminDashboard() {
                 ))}
               </div>
             ) : (
-              <Card className="flex flex-col gap-1">
-                <div className="grid grid-cols-[1fr_1.4fr_auto] sm:grid-cols-[1fr_1.4fr_1fr_auto] gap-3 px-4 py-2.5 border-b border-border-subtle text-[9px] font-black uppercase tracking-widest text-text-muted">
-                  <span>User</span>
-                  <span>Email</span>
-                  <span className="hidden sm:block">Clinic</span>
-                  <span>Role</span>
-                </div>
-
-                {platformUsers.length === 0 ? (
-                  <div className="py-10 text-center text-xs text-text-muted border-b border-border-subtle/50">
-                    No users match the current filters.
-                  </div>
-                ) : (
-                  platformUsers.map((u) => (
-                    <div
-                      key={`${u.role}-${u.id}`}
-                      className="px-4 py-3 border-b border-border-subtle/50 last:border-0 hover:bg-bg-muted/20 transition"
-                    >
-                      <div className="grid grid-cols-[1fr_1.4fr_auto] sm:grid-cols-[1fr_1.4fr_1fr_auto] gap-3 items-center text-xs font-semibold text-text-secondary">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-indigo-400 text-white font-bold flex items-center justify-center text-[10px] shrink-0">
-                            {u.name.charAt(0).toUpperCase()}
-                          </span>
-                          <div className="truncate">
-                            <div className="text-text-primary font-bold truncate">{u.name}</div>
-                            <div className="text-[9px] text-text-muted uppercase tracking-wider">
-                              {u.userId ? (u.userId.startsWith('staff-auth') ? 'Invited (email match)' : 'Registered') : 'Walk-in'}
+              <Card className="overflow-hidden border border-border-subtle">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User / Patient</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead className="hidden sm:table-cell">Clinic</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {platformUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-10 text-center text-xs text-text-muted">
+                          No users match the current filters.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      platformUsers.map((u) => (
+                        <TableRow key={`${u.role}-${u.id}`}>
+                          <TableCell>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <Avatar
+                                sx={{
+                                  width: 32,
+                                  height: 32,
+                                  fontSize: '11px',
+                                  fontWeight: 'black',
+                                  background: 'linear-gradient(to top right, var(--color-primary), #818cf8)',
+                                  color: 'white',
+                                }}
+                              >
+                                {u.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <div className="truncate">
+                                <div className="text-text-primary font-bold truncate">{u.name}</div>
+                                <div className="text-[9px] text-text-muted uppercase tracking-wider">
+                                  {u.userId ? (u.userId.startsWith('staff-auth') ? 'Invited (email match)' : 'Registered') : 'Walk-in'}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                        <span className="truncate">{u.email || '—'}</span>
-                        <span className="hidden sm:block truncate">{u.clinicName}</span>
-                        <Badge
-                          variant={
-                            u.role === 'ADMIN' ? 'primary' : u.role === 'DOCTOR' ? 'success' : u.role === 'RECEPTIONIST' ? 'warning' : 'secondary'
-                          }
-                          size="sm"
-                          className="justify-self-end"
-                        >
-                          {u.role}
-                        </Badge>
-                      </div>
+                          </TableCell>
+                          <TableCell className="truncate">{u.email || '—'}</TableCell>
+                          <TableCell className="hidden sm:table-cell truncate">{u.clinicName}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={u.role}
+                              size="small"
+                              color={u.role === 'ADMIN' ? 'primary' : u.role === 'DOCTOR' ? 'success' : u.role === 'RECEPTIONIST' ? 'warning' : 'default'}
+                              sx={{
+                                fontSize: '9px',
+                                fontWeight: 900,
+                                textTransform: 'uppercase',
+                                height: '20px',
+                                borderRadius: '6px',
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              <select
+                                value={u.role}
+                                disabled={!u.userId || userActionLoading !== null}
+                                onChange={(e) => handleChangeUserRole(u, e.target.value)}
+                                className="p-1.5 border border-border-subtle rounded-lg bg-bg-surface text-[11px] font-bold text-text-primary focus:outline-none disabled:opacity-50"
+                              >
+                                <option value="PATIENT">Patient</option>
+                                <option value="RECEPTIONIST">Receptionist</option>
+                                <option value="DOCTOR">Doctor</option>
+                                <option value="ADMIN">Clinic Admin</option>
+                              </select>
 
-                      <div className="flex flex-wrap items-center gap-2 mt-2.5 pt-2.5 border-t border-border-subtle/40">
-                        <select
-                          value={u.role}
-                          disabled={!u.userId || userActionLoading !== null}
-                          onChange={(e) => handleChangeUserRole(u, e.target.value)}
-                          className="p-1.5 border border-border-subtle rounded-lg bg-bg-surface text-[11px] font-bold text-text-primary focus:outline-none disabled:opacity-50"
-                        >
-                          <option value="PATIENT">Patient</option>
-                          <option value="RECEPTIONIST">Receptionist</option>
-                          <option value="DOCTOR">Doctor</option>
-                          <option value="ADMIN">Clinic Admin</option>
-                        </select>
+                              <Tooltip title="Send warning message to this patient" arrow>
+                                <span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!u.userId || userActionLoading !== null}
+                                    isLoading={userActionLoading === `warning-${u.id}`}
+                                    onClick={() => handleSendUserMessage(u, 'WARNING')}
+                                    className="text-[11px] border-amber-500/60 text-amber-600 hover:bg-amber-500/10 min-h-[32px]"
+                                  >
+                                    Warn
+                                  </Button>
+                                </span>
+                              </Tooltip>
 
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!u.userId || userActionLoading !== null}
-                          isLoading={userActionLoading === `warning-${u.id}`}
-                          onClick={() => handleSendUserMessage(u, 'WARNING')}
-                          className="text-[11px] border-amber-500/60 text-amber-600 hover:bg-amber-500/10 min-h-[32px]"
-                        >
-                          Warn
-                        </Button>
-                        <Button
-                          variant="success"
-                          size="sm"
-                          disabled={!u.userId || userActionLoading !== null}
-                          isLoading={userActionLoading === `appreciation-${u.id}`}
-                          onClick={() => handleSendUserMessage(u, 'APPRECIATION')}
-                          className="text-[11px] min-h-[32px]"
-                        >
-                          Appreciate
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          disabled={userActionLoading !== null}
-                          isLoading={userActionLoading === `delete-${u.id}`}
-                          onClick={() => handleDeleteUser(u)}
-                          className="text-[11px] min-h-[32px]"
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
+                              <Tooltip title="Send appreciation message to this patient" arrow>
+                                <span>
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    disabled={!u.userId || userActionLoading !== null}
+                                    isLoading={userActionLoading === `appreciation-${u.id}`}
+                                    onClick={() => handleSendUserMessage(u, 'APPRECIATION')}
+                                    className="text-[11px] min-h-[32px]"
+                                  >
+                                    Appreciate
+                                  </Button>
+                                </span>
+                              </Tooltip>
+
+                              <Tooltip title="Permanently delete user profile" arrow>
+                                <span>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    disabled={userActionLoading !== null}
+                                    isLoading={userActionLoading === `delete-${u.id}`}
+                                    onClick={() => handleDeleteUser(u)}
+                                    className="text-[11px] min-h-[32px]"
+                                  >
+                                    Delete
+                                  </Button>
+                                </span>
+                              </Tooltip>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </Card>
             )}
           </div>

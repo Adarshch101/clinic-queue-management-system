@@ -10,6 +10,16 @@ import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/Table';
+import Chip from '@mui/material/Chip';
+import Tooltip from '@mui/material/Tooltip';
 import { 
   Building, Users, Calendar, 
   Activity, Clock, UserCheck, 
@@ -1165,41 +1175,82 @@ export default function AdminDashboard() {
               {loadingStats ? (
                 <div className="text-center py-10 text-xs text-text-muted">Loading staff...</div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {/* Admins */}
-                  {dashboardStats?.staff?.admins?.map((adm) => (
-                    <div key={adm.id} className="p-3.5 rounded-2xl border border-border-subtle bg-bg-surface flex items-center justify-between gap-3 text-xs font-bold">
-                      <div>
-                        <div className="text-text-primary">{adm.name}</div>
-                        <div className="text-[10px] text-text-muted mt-0.5">Role: CLINIC_ADMIN • {adm.email}</div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveStaff(adm.id, 'ADMIN')}
-                        className="p-1.5 rounded-lg text-danger hover:bg-danger-muted transition"
-                        title="Remove Admin"
-                      >
-                        <Trash2 className="w-4 h-4 shrink-0" />
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* Receptionists */}
-                  {dashboardStats?.staff?.receptionists?.map((rec) => (
-                    <div key={rec.id} className="p-3.5 rounded-2xl border border-border-subtle bg-bg-surface flex items-center justify-between gap-3 text-xs font-bold">
-                      <div>
-                        <div className="text-text-primary">{rec.name}</div>
-                        <div className="text-[10px] text-text-muted mt-0.5">Role: RECEPTIONIST • {rec.email}</div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveStaff(rec.id, 'RECEPTIONIST')}
-                        className="p-1.5 rounded-lg text-danger hover:bg-danger-muted transition"
-                        title="Remove Receptionist"
-                      >
-                        <Trash2 className="w-4 h-4 shrink-0" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <Card className="overflow-hidden border border-border-subtle bg-bg-surface">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Staff Member</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(!dashboardStats?.staff?.admins?.length && !dashboardStats?.staff?.receptionists?.length) ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="py-10 text-center text-xs text-text-muted">
+                            No registered staff directory members found.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        <>
+                          {dashboardStats?.staff?.admins?.map((adm) => (
+                            <TableRow key={adm.id}>
+                              <TableCell className="font-bold text-text-primary">{adm.name}</TableCell>
+                              <TableCell>{adm.email}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label="ADMIN"
+                                  size="small"
+                                  color="primary"
+                                  sx={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', height: '20px', borderRadius: '6px' }}
+                                />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Tooltip title="Remove Admin" arrow>
+                                  <span>
+                                    <button
+                                      onClick={() => handleRemoveStaff(adm.id, 'ADMIN')}
+                                      className="p-1.5 rounded-lg text-danger hover:bg-danger-muted transition"
+                                    >
+                                      <Trash2 className="w-4 h-4 shrink-0" />
+                                    </button>
+                                  </span>
+                                </Tooltip>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {dashboardStats?.staff?.receptionists?.map((rec) => (
+                            <TableRow key={rec.id}>
+                              <TableCell className="font-bold text-text-primary">{rec.name}</TableCell>
+                              <TableCell>{rec.email}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label="RECEPTIONIST"
+                                  size="small"
+                                  color="warning"
+                                  sx={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', height: '20px', borderRadius: '6px' }}
+                                />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Tooltip title="Remove Receptionist" arrow>
+                                  <span>
+                                    <button
+                                      onClick={() => handleRemoveStaff(rec.id, 'RECEPTIONIST')}
+                                      className="p-1.5 rounded-lg text-danger hover:bg-danger-muted transition"
+                                    >
+                                      <Trash2 className="w-4 h-4 shrink-0" />
+                                    </button>
+                                  </span>
+                                </Tooltip>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      )}
+                    </TableBody>
+                  </Table>
+                </Card>
               )}
             </div>
 

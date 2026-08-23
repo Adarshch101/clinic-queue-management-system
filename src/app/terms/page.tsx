@@ -10,7 +10,7 @@ export default function TermsPage() {
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-black text-text-primary tracking-tight">Terms of Service</h1>
           <p className="text-text-secondary">
-            These Terms of Service ("Terms") govern your use of the Q-Clinix platform. By accessing or using the platform, you agree to be bound by these Terms.
+            These Terms of Service &quot;Terms&quot; govern your use of the Q-Clinix platform. By accessing or using the platform, you agree to be bound by these Terms.
           </p>
         </div>
 
@@ -36,7 +36,7 @@ export default function TermsPage() {
 
           <h2 className="text-2xl font-black text-text-primary tracking-tight">Limitation of Liability</h2>
           <p className="text-text-secondary text-sm leading-relaxed">
-            Q-Clinix provides the platform on an "as is" basis without warranties of any kind, either express or implied.
+            Q-Clinix provides the platform on an &quot;as is&quot; basis without warranties of any kind, either express or implied.
           </p>
 
           <h2 className="text-2xl font-black text-text-primary tracking-tight">Changes to Terms</h2>

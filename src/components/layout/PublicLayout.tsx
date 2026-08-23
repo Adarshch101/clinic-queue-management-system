@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import NextLink from 'next/link';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -27,7 +28,25 @@ export interface PublicLayoutProps {
 
 export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   const { theme, toggleTheme } = useApp();
+  const { profile, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const getDashboardLink = (role: string) => {
+    switch (role) {
+      case 'SUPER_ADMIN':
+        return '/admin/super-dashboard';
+      case 'ADMIN':
+        return '/admin/dashboard';
+      case 'DOCTOR':
+        return '/doctor/dashboard';
+      case 'RECEPTIONIST':
+        return '/receptionist/dashboard';
+      case 'PATIENT':
+        return '/patient/dashboard';
+      default:
+        return '/';
+    }
+  };
 
   const navLinks = [
     { href: '/', label: 'Home' },
@@ -109,37 +128,61 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
                 {theme === 'light' ? <DarkModeIcon /> : <LightModeIcon sx={{ color: 'warning.main' }} />}
               </IconButton>
 
-              <Button
-                component={NextLink}
-                href="/login"
-                variant="outlined"
-                size="small"
-                startIcon={<LoginIcon />}
-                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-              >
-                Portal Login
-              </Button>
+              {profile ? (
+                <>
+                  <Button
+                    component={NextLink}
+                    href={getDashboardLink(profile.role)}
+                    variant="contained"
+                    size="small"
+                    sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                  >
+                    Dashboard
+                  </Button>
+                  <Button
+                    onClick={() => logout()}
+                    variant="outlined"
+                    size="small"
+                    sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                  >
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    component={NextLink}
+                    href="/login"
+                    variant="outlined"
+                    size="small"
+                    startIcon={<LoginIcon />}
+                    sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                  >
+                    Portal Login
+                  </Button>
 
-              <Button
-                component={NextLink}
-                href="/register/patient"
-                variant="outlined"
-                size="small"
-                startIcon={<PersonAddIcon />}
-                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-              >
-                Patient Sign Up
-              </Button>
+                  <Button
+                    component={NextLink}
+                    href="/register/patient"
+                    variant="outlined"
+                    size="small"
+                    startIcon={<PersonAddIcon />}
+                    sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                  >
+                    Patient Sign Up
+                  </Button>
 
-              <Button
-                component={NextLink}
-                href="/register"
-                variant="contained"
-                size="small"
-                sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-              >
-                Register Clinic
-              </Button>
+                  <Button
+                    component={NextLink}
+                    href="/register"
+                    variant="contained"
+                    size="small"
+                    sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                  >
+                    Register Clinic
+                  </Button>
+                </>
+              )}
 
               <IconButton
                 onClick={() => setMobileMenuOpen(true)}
@@ -176,18 +219,54 @@ export const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
             </Button>
           ))}
           <Divider sx={{ my: 1 }} />
-          <Button component={NextLink} href="/policies" variant="outlined" fullWidth>
+          <Button component={NextLink} href="/policies" variant="outlined" fullWidth onClick={() => setMobileMenuOpen(false)}>
             Policies
           </Button>
-          <Button component={NextLink} href="/login" variant="outlined" fullWidth>
-            Portal Login
-          </Button>
-          <Button component={NextLink} href="/register/patient" variant="outlined" fullWidth startIcon={<PersonAddIcon />}>
-            Patient Sign Up
-          </Button>
-          <Button component={NextLink} href="/register" variant="contained" fullWidth>
-            Register Clinic
-          </Button>
+          {profile ? (
+            <>
+              <Button
+                component={NextLink}
+                href={getDashboardLink(profile.role)}
+                variant="contained"
+                fullWidth
+                onClick={() => setMobileMenuOpen(false)}
+                sx={{ mt: 1 }}
+              >
+                Dashboard
+              </Button>
+              <Button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  logout();
+                }}
+                variant="outlined"
+                fullWidth
+                sx={{ mt: 1 }}
+              >
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button component={NextLink} href="/login" variant="outlined" fullWidth onClick={() => setMobileMenuOpen(false)} sx={{ mt: 1 }}>
+                Portal Login
+              </Button>
+              <Button
+                component={NextLink}
+                href="/register/patient"
+                variant="outlined"
+                fullWidth
+                startIcon={<PersonAddIcon />}
+                onClick={() => setMobileMenuOpen(false)}
+                sx={{ mt: 1 }}
+              >
+                Patient Sign Up
+              </Button>
+              <Button component={NextLink} href="/register" variant="contained" fullWidth onClick={() => setMobileMenuOpen(false)} sx={{ mt: 1 }}>
+                Register Clinic
+              </Button>
+            </>
+          )}
         </Box>
       </Drawer>
 
