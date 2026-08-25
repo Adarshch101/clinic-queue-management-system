@@ -221,6 +221,33 @@ export async function POST(request: Request) {
       return NextResponse.json(updated);
     }
 
+    // --- Action 6: Delete Announcement ---
+    if (action === 'delete-announcement') {
+      const { id } = body;
+      if (!id) {
+        return NextResponse.json({ error: 'Missing announcement id' }, { status: 400 });
+      }
+      await prisma.announcement.delete({
+        where: { id },
+      });
+      // Audit log
+      await prisma.auditLog.create({
+        data: {
+          clinicId: undefined,
+          userId: resolvedAdminId,
+          userRole: 'SUPER_ADMIN',
+          action: 'DELETE_ANNOUNCEMENT',
+          clinic: {
+            connect: {
+              id: 'global',
+            },
+          },
+          details: `Announcement deleted: ID ${id}`,
+        },
+      });
+      return NextResponse.json({ success: true });
+    }
+
     // --- Action 6: Delete Clinic ---
     if (action === 'delete-clinic') {
       const { clinicId } = body;

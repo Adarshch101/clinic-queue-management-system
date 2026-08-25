@@ -30,9 +30,7 @@ import {
 import { 
   Building, Users, Shield, ToggleLeft, ToggleRight, 
   CheckCircle2, 
-  Ban, Activity, 
-  ChevronRight, Clock
-} from 'lucide-react';
+  Ban, Activity, ChevronRight, Clock, Trash2 } from 'lucide-react';
 
 interface SuperStats {
   totalClinics: number;
@@ -499,6 +497,30 @@ export default function SuperAdminDashboard() {
       }
     } catch {
       alert('Failed to publish announcement.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 6. Delete announcement
+  const handleDeleteAnnouncement = async (annId: string) => {
+    if (!confirm('Are you sure you want to delete this announcement permanently? This action is irreversible.')) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/super-admin/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete-announcement',
+          id: annId,
+        }),
+      });
+      if (res.ok) {
+        alert('Announcement successfully deleted.');
+        fetchSuperAdminData();
+      }
+    } catch {
+      alert('Failed to delete announcement.');
     } finally {
       setActionLoading(false);
     }
@@ -1334,6 +1356,14 @@ export default function SuperAdminDashboard() {
                       <div className="flex justify-between items-center w-full gap-2">
                         <span className="font-extrabold text-text-primary truncate">{ann.title}</span>
                         <Badge variant="primary" size="sm">{ann.target}</Badge>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          aria-label={`Delete announcement: ${ann.title}`}
+                          onClick={() => handleDeleteAnnouncement(ann.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                       <p className="font-medium mt-1">{ann.content}</p>
                       <span className="text-[9px] text-text-muted mt-2">{new Date(ann.createdAt).toLocaleDateString()}</span>
@@ -1632,6 +1662,150 @@ export default function SuperAdminDashboard() {
                 .map((log) => (
                   <div key={log.id} className="p-4 rounded-2xl border border-border-subtle bg-bg-surface flex items-start gap-4 text-xs font-semibold text-text-secondary leading-normal">
                     <span className="text-lg select-none shrink-0">🛡️</span>
+                    <div className="flex-1 truncate">
+                      <div className="flex justify-between items-center w-full gap-2">
+                        <span className="font-extrabold text-text-primary truncate">{log.action.replace(/_/g, ' ')}</span>
+                        <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">{new Date(log.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="text-[10px] text-text-secondary mt-1">{log.details}</p>
+                      <div className="text-[9px] text-text-muted mt-2 font-bold uppercase tracking-wider">
+                        Operator: {log.userId} • Role: {log.userRole} • clinic: {log.clinicId}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 8: PLATFORM AUDIT */}
+        {activeTab === 'platform-audit' && (
+          <div className="flex flex-col gap-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h3 className="font-extrabold text-sm text-text-primary">Platform Audit Timeline</h3>
+              <Input
+                isSearch
+                placeholder="Search audit actions, details..."
+                value={auditQuery}
+                onChange={(e) => setAuditQuery(e.target.value)}
+                className="w-full sm:max-w-[320px]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {auditLogs
+                ?.filter((log) => {
+                  const platformActions = [
+                    'PUBLISH_ANNOUNCEMENT',
+                    'TOGGLE_FEATURE_FLAG',
+                    'TOGGLE_MAINTENANCE_MODE',
+                    'SEND_WARNING',
+                    'SEND_APPRECIATION',
+                  ];
+                  return platformActions.includes(log.action) ||
+                    log.action.toLowerCase().includes('login') ||
+                    log.action.toLowerCase().includes('signup') ||
+                    log.action.toLowerCase().includes('registration');
+                })
+                .map((log) => (
+                  <div key={log.id} className="p-4 rounded-2xl border border-border-subtle bg-bg-surface flex items-start gap-4 text-xs font-semibold text-text-secondary leading-normal">
+                    <span className="text-lg select-none shrink-0">🛡️</span>
+                    <div className="flex-1 truncate">
+                      <div className="flex justify-between items-center w-full gap-2">
+                        <span className="font-extrabold text-text-primary truncate">{log.action.replace(/_/g, ' ')}</span>
+                        <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">{new Date(log.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="text-[10px] text-text-secondary mt-1">{log.details}</p>
+                      <div className="text-[9px] text-text-muted mt-2 font-bold uppercase tracking-wider">
+                        Operator: {log.userId} • Role: {log.userRole} • clinic: {log.clinicId}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 9: USER AUDITS */}
+        {activeTab === 'user-audits' && (
+          <div className="flex flex-col gap-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h3 className="font-extrabold text-sm text-text-primary">User Audit Timeline</h3>
+              <Input
+                isSearch
+                placeholder="Search audit actions, details..."
+                value={auditQuery}
+                onChange={(e) => setAuditQuery(e.target.value)}
+                className="w-full sm:max-w-[320px]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {auditLogs
+                ?.filter((log) => {
+                  const userActions = [
+                    'DELETE_USER',
+                    'ROLE_CHANGE',
+                    'SEND_WARNING',
+                    'SEND_APPRECIATION',
+                  ];
+                  return userActions.includes(log.action) ||
+                    log.action.toLowerCase().includes('user') ||
+                    log.action.toLowerCase().includes('role');
+                })
+                .map((log) => (
+                  <div key={log.id} className="p-4 rounded-2xl border border-border-subtle bg-bg-surface flex items-start gap-4 text-xs font-semibold text-text-secondary leading-normal">
+                    <span className="text-lg select-none shrink-0">👤</span>
+                    <div className="flex-1 truncate">
+                      <div className="flex justify-between items-center w-full gap-2">
+                        <span className="font-extrabold text-text-primary truncate">{log.action.replace(/_/g, ' ')}</span>
+                        <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">{new Date(log.createdAt).toLocaleString()}</span>
+                      </div>
+                      <p className="text-[10px] text-text-secondary mt-1">{log.details}</p>
+                      <div className="text-[9px] text-text-muted mt-2 font-bold uppercase tracking-wider">
+                        Operator: {log.userId} • Role: {log.userRole} • clinic: {log.clinicId}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 10: CLINIC AUDIT */}
+        {activeTab === 'clinic-audit' && (
+          <div className="flex flex-col gap-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h3 className="font-extrabold text-sm text-text-primary">Clinic Audit Timeline</h3>
+              <Input
+                isSearch
+                placeholder="Search audit actions, details..."
+                value={auditQuery}
+                onChange={(e) => setAuditQuery(e.target.value)}
+                className="w-full sm:max-w-[320px]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {auditLogs
+                ?.filter((log) => {
+                  const clinicActions = [
+                    'CLINIC_VERIFIED',
+                    'CLINIC_REJECTED',
+                    'CLINIC_SUSPENDED',
+                    'CLINIC_PENDING',
+                    'CLINIC_APPROVE',
+                    'CLINIC_REJECT',
+                    'REQUEST_CHANGES',
+                    'DELETE_CLINIC',
+                  ];
+                  return clinicActions.includes(log.action) ||
+                    log.action.toLowerCase().includes('clinic') ||
+                    log.details.toLowerCase().includes('clinic');
+                })
+                .map((log) => (
+                  <div key={log.id} className="p-4 rounded-2xl border border-border-subtle bg-bg-surface flex items-start gap-4 text-xs font-semibold text-text-secondary leading-normal">
+                    <span className="text-lg select-none shrink-0">🏥</span>
                     <div className="flex-1 truncate">
                       <div className="flex justify-between items-center w-full gap-2">
                         <span className="font-extrabold text-text-primary truncate">{log.action.replace(/_/g, ' ')}</span>

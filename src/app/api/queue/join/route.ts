@@ -11,6 +11,15 @@ export const POST = withErrorHandler(async (request: Request) => {
   const clientIp = request.headers.get('x-forwarded-for') || 'anonymous_ip';
   RateLimiter.checkLimit(`rate_join_${clientIp}`, 5, 60000);
 
+  // 2. REQUIRE authentication - only PATIENT role can join queues
+  const session = getSessionFromRequest(request);
+  if (!session || session.role !== 'PATIENT') {
+    return NextResponse.json(
+      { error: 'Authentication required. Please log in as a patient to join a queue.' },
+      { status: 401 }
+    );
+  }
+
   const { clinicId, doctorId, name, age, gender, phone, reason, isEmergency } = await request.json();
 
   if (!clinicId || !doctorId || !name || !age || !phone) {
@@ -31,10 +40,6 @@ export const POST = withErrorHandler(async (request: Request) => {
   if (typeof clinicId !== 'string' || typeof doctorId !== 'string') {
     throw new AppError('Invalid clinic or doctor reference', 400);
   }
-
-  // Resolve the session early: it controls both patient attribution and
-  // whether an emergency flag is honored.
-  const session = getSessionFromRequest(request);
 
   // 1. Find or create patient profile for phone number.
   // A logged-in PATIENT is always bound to their own profile row (by userId),

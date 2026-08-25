@@ -344,7 +344,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ clinicId }) 
         throw new Error('Submit failed');
       }
 
-      setSubmitSuccess(true);
+      // Redirect to verification pending page instead of returning home
+      router.push(`/auth/verification-pending?clinicId=${clinicId}`);
     } catch {
       alert('Failed to submit onboarding files.');
     } finally {
