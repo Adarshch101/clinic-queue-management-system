@@ -178,6 +178,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           ]},
           { section: 'Monitoring', items: [
             { href: '/admin/super-dashboard#audits', label: 'Security Audits', icon: <History className="w-4 h-4" /> },
+            { href: '/admin/super-dashboard#platform-audit', label: 'Platform Audit', icon: <Shield className="w-4 h-4" /> },
+            { href: '/admin/super-dashboard#user-audits', label: 'User Audits', icon: <UserCheck className="w-4 h-4" /> },
+            { href: '/admin/super-dashboard#clinic-audit', label: 'Clinic Audit', icon: <Building className="w-4 h-4" /> },
             { href: '/admin/super-dashboard#global-analytics', label: 'Platform Analytics', icon: <BarChart3 className="w-4 h-4" /> },
           ]},
         ];

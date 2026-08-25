@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 import { NotificationEngine } from '@/lib/notificationEngine';
 
-const VALID_ACTIONS = new Set(['SUBMIT', 'APPROVE', 'REJECT']);
+const VALID_ACTIONS = new Set(['SUBMIT', 'APPROVE', 'REJECT', 'VERIFY_DOCUMENTS']);
 
 export async function POST(request: Request) {
   const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
@@ -21,13 +21,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unknown review action' }, { status: 400 });
     }
 
-    // Admins may only SUBMIT their own clinic; approval decisions are SUPER_ADMIN-only
+    // Admins may only SUBMIT their own clinic; approval/verification decisions are SUPER_ADMIN-only
     if (action === 'SUBMIT') {
       if (!sessionHasClinicAccess(session, clinicId)) {
         return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
       }
     } else if (session.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Only the platform administrator can approve or reject clinics' }, { status: 403 });
+      return NextResponse.json({ error: 'Only the platform administrator can approve or verify clinics' }, { status: 403 });
     }
 
     const performedBy = session.userId;
@@ -46,6 +46,21 @@ export async function POST(request: Request) {
       } else if (action === 'REJECT') {
         targetStatus = 'REJECTED';
         requestStatus = 'REJECTED';
+      } else if (action === 'VERIFY_DOCUMENTS') {
+        // Verify documents: if doctor count >= 1, set clinic to VERIFIED
+        const clinicWithDoctors = await prisma.clinic.findUnique({
+          where: { id: clinicId },
+          include: { doctors: true }
+        });
+
+        if ((clinicWithDoctors?.doctors?.length || 0) >= 1) {
+          targetStatus = 'VERIFIED';
+          requestStatus = 'APPROVED';
+        } else {
+          // Doctor still needed - keep PENDING but mark documents as verified
+          targetStatus = 'PENDING_DOCS_VERIFIED';
+          requestStatus = 'PENDING_REVIEW';
+        }
       }
 
       // 2. Update Clinic status
@@ -99,6 +114,12 @@ export async function POST(request: Request) {
             ownerId: clinic.ownerName || 'owner',
             email: clinic.email || '',
             reason: reason || 'Verification document discrepancy',
+          });
+        } else if (action === 'VERIFY_DOCUMENTS') {
+          await NotificationEngine.dispatchEvent('CLINIC_DOCUMENTS_VERIFIED', {
+            ownerId: clinic.ownerName || 'owner',
+            email: clinic.email || '',
+            clinicName: clinic.name,
           });
         }
       } catch (err) {
