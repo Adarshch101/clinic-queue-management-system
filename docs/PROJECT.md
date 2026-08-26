@@ -40,7 +40,7 @@ This document is the master reference for the codebase: architecture, setup, dat
 | UI Libraries   | **Material UI (MUI) v9** + **shadcn/ui** (Radix primitives + CVA + tw-animate-css) |
 | Animations     | `framer-motion` |
 | Icons          | `lucide-react` (shadcn/custom UI) and `@mui/icons-material` (MUI UI) |
-| Fonts          | `next/font` — Outfit (variable `--font-sans`) |
+| Fonts          | `next/font` — Geist & Geist Mono (variable `--font-sans` & `--font-mono`) |
 | Notifications  | In-app engine (`src/lib/notificationEngine.ts`) + SMTP/Twilio configuration placeholders |
 
 > **Important (MUI v9):** MUI v9 removed the CSS *system props* (`alignItems`, `justifyContent`, `flexWrap`, …) from `Stack` — pass them via `sx`. The project integrates MUI through `src/lib/muiTheme.ts` + `src/components/providers/MuiThemeProvider.tsx`.
@@ -64,20 +64,23 @@ src/
 │   ├── admin/                   # Clinic admin hub + Super Admin console
 │   ├── doctor/ receptionist/ patient/ # Role dashboards
 │   └── api/                     # Route handlers (see API Reference)
-├── components/
-│   ├── guards/                  # RoleGuard (client-side route guard for dashboards)
-│   ├── layout/                  # PublicLayout, AuthLayout, DashboardLayout
-│   ├── providers/               # MuiThemeProvider
-│   ├── ui/                      # shadcn/ui kit: Button, Card, Input, Select, Badge, Tabs,
-│   │                            #   Accordion, Dialog, Avatar, Skeleton, Timeline
-│   └── dashboard/               # Shared dashboard widgets
-├── features/
-│   ├── auth/                    # AuthContext, authService, LoginForm/RegisterForm, validators
-│   ├── clinics/onboarding/      # Clinic registration flow (draft → upload → review)
-│   └── public/                  # SearchPanel, ClinicCard, JoinQueueDialog, TokenSuccess
-├── context/                     # AppContext (theme, clinics, currentClinic, notifications, user)
-└── lib/
-    ├── prisma.ts                # Prisma client (adapter-pg)
+│   ├── components/
+│   │   ├── guards/              # RoleGuard (client-side route guard for dashboards)
+│   │   ├── layout/              # PublicLayout, AuthLayout, DashboardLayout
+│   │   ├── providers/           # MuiThemeProvider
+│   │   ├── ui/                  # shadcn/ui kit: Button, Card, Input, Select, Badge, Tabs, Dialog...
+│   │   └── dashboard/           # Shared dashboard widgets & role tabs:
+│   │       ├── admin/tabs/      # OverviewTab, SuperOverviewTab
+│   │       ├── doctor/tabs/     # DoctorConsultationTab, DoctorQueueTab, DoctorHistoryTab
+│   │       └── receptionist/tabs/# WalkInRegisterTab, AppointmentsCheckInTab, LiveQueueControlTab
+│   ├── features/
+│   │   ├── auth/                # AuthContext, authService, LoginForm/RegisterForm, validators
+│   │   ├── clinics/onboarding/  # Clinic registration flow (draft → upload → review)
+│   │   └── public/              # SearchPanel, ClinicCard, JoinQueueDialog, TokenSuccess
+│   ├── context/                 # AppContext (theme, clinics, currentClinic, notifications, user)
+│   └── lib/
+│       ├── prisma.ts            # Prisma client (adapter-pg)
+│       ├── dtoHelpers.ts        # Safe URL & document DTO mapping helpers
     ├── session.ts               # Signed cookie session create/verify
     ├── apiAuth.ts               # requireAuth / requireRole / requireClinicAccess / sessionHasClinicAccess
     ├── resolveProfile.ts        # Role + permissions resolution (env super admin)

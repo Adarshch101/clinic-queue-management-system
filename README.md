@@ -29,8 +29,10 @@ Built with **Next.js 16 (App Router)**, **Prisma 7 + PostgreSQL**, **Supabase Au
 
 - **Public clinic directory** — search verified clinics with live wait-time estimates, doctor listings, and service details.
 - **Virtual queue join & tracking** — patients join a clinic queue from their phone and track their position in real time (no login required for anonymous walk-ins).
-- **Role-based dashboards** — dedicated workspaces for `PATIENT`, `RECEPTIONIST`, `DOCTOR`, `ADMIN`, and `SUPER_ADMIN`, guarded at the route layer, the client layer, and the API layer.
-- **Queue operations** — call next, complete consultation, transfer, skip, recall, emergency approval, add delay, pause/resume — each gated by a per-action role matrix.
+- **Modular role-based dashboards** — dedicated modular workspaces for `PATIENT`, `RECEPTIONIST`, `DOCTOR`, `ADMIN`, and `SUPER_ADMIN`, guarded at the route layer (`src/proxy.ts`), client layer (`<RoleGuard>`), and server layer (`apiAuth.ts`). Dashboards utilize dynamic lazy loading (`next/dynamic`), URL hash sync (`#tab`), and memoization (`useMemo`, `useCallback`).
+- **Doctor suite** — active consultation room card (`DoctorConsultationTab`), live room waitlist with emergency priority approval widget (`DoctorQueueTab`), and expandable consultation history today (`DoctorHistoryTab`).
+- **Receptionist control panel** — walk-in registration with thermal ticket print voucher (`WalkInRegisterTab`), appointment check-in hub (`AppointmentsCheckInTab`), and multi-physician lobby queue orchestration (`LiveQueueControlTab`) with strict PHI redaction.
+- **Queue operations** — call next, complete consultation, transfer, skip, recall, emergency priority approval, broadcast delay, pause/resume — each gated by a per-action role matrix.
 - **Appointments & visits** — booking, check-in, and post-consultation records (diagnosis, prescriptions, notes) with PHI redaction for front-desk roles.
 - **Medical report management** — secure upload, listing, and authenticated viewing of patient documents (stored in UploadThing with ACL configured via `UPLOADTHING_ACL`).
 - **Clinic onboarding workflow** — multi-step registration with document upload and a Super Admin verification/review queue.
@@ -53,7 +55,7 @@ Built with **Next.js 16 (App Router)**, **Prisma 7 + PostgreSQL**, **Supabase Au
 | UI Libraries   | Material UI v9 (public/auth surfaces) + shadcn/ui (dashboards/features) |
 | Animations     | framer-motion |
 | Icons          | lucide-react (shadcn/custom UI) + @mui/icons-material (MUI) |
-| Fonts          | next/font — Outfit (variable `--font-sans`) |
+| Fonts          | next/font — Geist & Geist Mono (variable `--font-sans` & `--font-mono`) |
 
 > **Two UI systems, one palette:** MUI powers the landing page, public layout, and auth screens via `src/lib/muiTheme.ts` + `MuiThemeProvider`. The shadcn/ui kit (`src/components/ui/`) is the standard for dashboards and feature UI. Both share the same CSS-variable palette in `src/app/globals.css` and coexist visually.
 
