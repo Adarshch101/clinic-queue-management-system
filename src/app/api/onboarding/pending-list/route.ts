@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/apiAuth';
+import { formatDocumentDtos } from '@/lib/dtoHelpers';
 
 export async function GET(request: Request) {
   const auth = requireRole(request, ['SUPER_ADMIN']);
@@ -24,10 +25,7 @@ export async function GET(request: Request) {
     // Point document links at the auth-gated endpoint instead of the on-disk key.
     const clinicDtos = clinics.map((c) => ({
       ...c,
-      documents: c.documents.map((d) => ({
-        ...d,
-        fileUrl: `/api/files/document?documentId=${d.id}`,
-      })),
+      documents: formatDocumentDtos(c.documents),
     }));
 
     return NextResponse.json(clinicDtos);

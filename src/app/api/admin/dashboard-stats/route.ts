@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
+import { formatDocumentDtos } from '@/lib/dtoHelpers';
 
 export async function GET(request: Request) {
   const auth = requireRole(request, ['ADMIN', 'SUPER_ADMIN']);
@@ -39,6 +40,12 @@ export async function GET(request: Request) {
       where: { clinicId, status: 'CANCELLED', createdAt: { gte: today } },
     });
 
+    // Fetch clinic settings for slot duration
+    const clinicSettings = await prisma.clinicSettings.findUnique({
+      where: { clinicId },
+    });
+    const avgConsultMinutes = clinicSettings?.slotDuration || 12;
+
     // 2. Fetch staff roster
     const admins = await prisma.clinicAdmin.findMany({ where: { clinicId } });
     const receptionists = await prisma.receptionist.findMany({ where: { clinicId } });
@@ -61,12 +68,7 @@ export async function GET(request: Request) {
       where: { clinicId },
     });
 
-    // Never expose the on-disk file key; point at the auth-gated download
-    // endpoint instead.
-    const documentDtos = documents.map((d) => ({
-      ...d,
-      fileUrl: `/api/files/document?documentId=${d.id}`,
-    }));
+    const documentDtos = formatDocumentDtos(documents);
 
     return NextResponse.json({
       stats: {
@@ -74,8 +76,8 @@ export async function GET(request: Request) {
         waitingCount,
         completedCount,
         cancelledCount,
-        averageWaitTime: waitingCount * 12,
-        averageConsultTime: 12,
+        averageWaitTime: waitingCount * avgConsultMinutes,
+        averageConsultTime: avgConsultMinutes,
       },
       staff: {
         admins,
@@ -90,3 +92,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
+
