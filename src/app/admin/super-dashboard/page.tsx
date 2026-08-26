@@ -733,6 +733,19 @@ export default function SuperAdminDashboard() {
     }, 1500);
   };
 
+  const filteredClinics = useMemo(() => {
+    const clinicsList = adminData?.clinics || [];
+    if (!clinicsList.length) return [];
+    if (!clinicQuery.trim()) return clinicsList;
+    const q = clinicQuery.toLowerCase();
+    return clinicsList.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.ownerName?.toLowerCase().includes(q) ||
+        c.city?.toLowerCase().includes(q)
+    );
+  }, [adminData?.clinics, clinicQuery]);
+
   if (loading) {
     return (
       <RoleGuard roles={['SUPER_ADMIN']}>
@@ -747,18 +760,6 @@ export default function SuperAdminDashboard() {
   }
 
   const { stats, clinics, featureFlags, platformSettings, announcements, auditLogs } = adminData!;
-
-  const filteredClinics = useMemo(() => {
-    if (!clinics) return [];
-    if (!clinicQuery.trim()) return clinics;
-    const q = clinicQuery.toLowerCase();
-    return clinics.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.ownerName?.toLowerCase().includes(q) ||
-        c.city?.toLowerCase().includes(q)
-    );
-  }, [clinics, clinicQuery]);
 
   return (
     <RoleGuard roles={['SUPER_ADMIN']}>

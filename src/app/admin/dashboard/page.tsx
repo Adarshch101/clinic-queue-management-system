@@ -467,7 +467,7 @@ interface Holiday {
     } finally {
       setLoadingSchedule(false);
     }
-  }, [currentClinic?.id]);
+  }, [currentClinic]);
 
   const fetchHolidays = useCallback(async () => {
     setLoadingHolidays(true);
@@ -484,9 +484,10 @@ interface Holiday {
     } finally {
       setLoadingHolidays(false);
     }
-  }, [currentClinic?.id]);
+  }, [currentClinic]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSchedule();
     fetchHolidays();
   }, [fetchSchedule, fetchHolidays]);
