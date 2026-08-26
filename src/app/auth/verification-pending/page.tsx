@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Button } from '@/components/ui/Button';
-import { ShieldCheck, Clock, RefreshCw, LogOut } from 'lucide-react';
+import { Clock, RefreshCw, LogOut } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
-import type { UserSessionProfile } from '@/features/auth/services/authService';
 
 interface ClinicSummary {
   documents: { documentType: string; fileName: string }[];
@@ -15,7 +14,7 @@ interface ClinicSummary {
   status: string;
 }
 
-export default function VerificationPending() {
+function VerificationPendingContent() {
   const { logout, refreshProfile } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -119,5 +118,20 @@ export default function VerificationPending() {
         </div>
       </div>
     </PublicLayout>
+  );
+}
+
+export default function VerificationPending() {
+  return (
+    <Suspense fallback={
+      <PublicLayout>
+        <div className="max-w-md mx-auto px-4 py-20 text-center flex flex-col items-center justify-center gap-6">
+          <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <span>Loading verification status...</span>
+        </div>
+      </PublicLayout>
+    }>
+      <VerificationPendingContent />
+    </Suspense>
   );
 }

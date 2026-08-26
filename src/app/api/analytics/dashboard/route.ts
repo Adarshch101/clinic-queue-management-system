@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { AnalyticsService } from '@/lib/analyticsService';
-import { prisma } from '@/lib/prisma';
 import { requireRole, sessionHasClinicAccess } from '@/lib/apiAuth';
 
 export async function GET(request: Request) {
@@ -18,20 +17,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'You do not have access to this clinic' }, { status: 403 });
     }
 
-    // 1. Audit Log: Log that analytics were viewed
-    await prisma.auditLog.create({
-      data: {
-        clinicId: clinicId || 'global-platform',
-        userId: session.userId,
-        userRole: clinicId ? 'ADMIN' : 'SUPER_ADMIN',
-        action: 'VIEW_ANALYTICS',
-        details: `Analytics dashboard loaded for range: ${dateRange}`,
-      }
-    });
-
     const stats = await AnalyticsService.getDashboardAnalytics(clinicId, dateRange);
     return NextResponse.json(stats);
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
+

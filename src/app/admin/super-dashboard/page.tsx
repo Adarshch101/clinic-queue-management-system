@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { RoleGuard } from '@/components/guards/RoleGuard';
@@ -31,6 +32,18 @@ import {
   Building, Users, Shield, ToggleLeft, ToggleRight, 
   CheckCircle2, 
   Ban, Activity, ChevronRight, Clock, Trash2 } from 'lucide-react';
+
+const SuperOverviewTab = dynamic(
+  () => import('@/components/dashboard/super-admin/tabs/SuperOverviewTab').then((m) => m.SuperOverviewTab),
+  {
+    loading: () => (
+      <div className="h-64 rounded-2xl bg-bg-muted animate-pulse flex items-center justify-center text-xs font-bold text-text-muted">
+        Loading Governance Console...
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 interface SuperStats {
   totalClinics: number;
@@ -735,6 +748,18 @@ export default function SuperAdminDashboard() {
 
   const { stats, clinics, featureFlags, platformSettings, announcements, auditLogs } = adminData!;
 
+  const filteredClinics = useMemo(() => {
+    if (!clinics) return [];
+    if (!clinicQuery.trim()) return clinics;
+    const q = clinicQuery.toLowerCase();
+    return clinics.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.ownerName?.toLowerCase().includes(q) ||
+        c.city?.toLowerCase().includes(q)
+    );
+  }, [clinics, clinicQuery]);
+
   return (
     <RoleGuard roles={['SUPER_ADMIN']}>
     <DashboardLayout>
@@ -771,224 +796,16 @@ export default function SuperAdminDashboard() {
 
         {/* TAB 1: OVERVIEW HOMEPAGE */}
         {activeTab === 'overview' && (
-          selectedClinicId && clinicScopeStats ? (
-            <div className="flex flex-col gap-8 animate-fadeIn">
-
-              {/* Deep-dive header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                  <h3 className="font-extrabold text-sm text-text-primary">
-                    Clinic Deep-Dive: {clinics.find((c) => c.id === selectedClinicId)?.name || 'Selected Clinic'}
-                  </h3>
-                  <p className="text-[10px] text-text-muted mt-0.5">Live operational intelligence for the selected tenant — tokens, staffing, and recent activity</p>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => setSelectedClinicId('')}>
-                  Back to platform-wide view
-                </Button>
-              </div>
-
-              {/* Clinic KPI cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatsCard
-                  label="Tokens Issued Today"
-                  value={clinicScopeStats.stats.totalPatients}
-                  change="All counters"
-                  icon={<Activity className="w-5 h-5 text-primary" />}
-                />
-                <StatsCard
-                  label="Currently Waiting"
-                  value={clinicScopeStats.stats.waitingCount}
-                  change="In queue right now"
-                  icon={<Clock className="w-5 h-5 text-amber-500" />}
-                />
-                <StatsCard
-                  label="Completed Today"
-                  value={clinicScopeStats.stats.completedCount}
-                  change="Successfully served"
-                  icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-                />
-                <StatsCard
-                  label="Cancelled Today"
-                  value={clinicScopeStats.stats.cancelledCount}
-                  change="No-show or skipped"
-                  icon={<Ban className="w-5 h-5 text-danger" />}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                {/* Workforce composition */}
-                <Card className="lg:col-span-2 flex flex-col gap-4">
-                  <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Workforce Composition</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-4 border border-border-subtle rounded-2xl flex flex-col gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Clinic Admins</span>
-                      <span className="text-2xl font-extrabold">{clinicScopeStats.staff.admins.length}</span>
-                      <span className="text-[10px] text-text-secondary font-semibold">{clinicScopeStats.staff.admins.map((a) => a.name).join(', ') || '—'}</span>
-                    </div>
-                    <div className="p-4 border border-border-subtle rounded-2xl flex flex-col gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Receptionists</span>
-                      <span className="text-2xl font-extrabold">{clinicScopeStats.staff.receptionists.length}</span>
-                      <span className="text-[10px] text-text-secondary font-semibold">{clinicScopeStats.staff.receptionists.map((a) => a.name).join(', ') || '—'}</span>
-                    </div>
-                    <div className="p-4 border border-border-subtle rounded-2xl flex flex-col gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Doctors</span>
-                      <span className="text-2xl font-extrabold">{clinicScopeStats.staff.doctors.length}</span>
-                      <span className="text-[10px] text-text-secondary font-semibold">{clinicScopeStats.staff.doctors.map((a) => a.name).join(', ') || '—'}</span>
-                    </div>
-                  </div>
-                </Card>
-
-                {/* Queue efficiency benchmarks */}
-                <Card className="flex flex-col gap-4">
-                  <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Queue Efficiency Benchmarks</h3>
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-text-secondary">Average Wait Time</span>
-                      <span className="text-sm font-extrabold text-text-primary">{clinicScopeStats.stats.averageWaitTime}m</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-text-secondary">Average Consult Time</span>
-                      <span className="text-sm font-extrabold text-text-primary">{clinicScopeStats.stats.averageConsultTime}m</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-text-secondary">Completion Rate</span>
-                      <span className="text-sm font-extrabold text-emerald-500">
-                        {clinicScopeStats.stats.totalPatients > 0
-                          ? Math.round((clinicScopeStats.stats.completedCount / clinicScopeStats.stats.totalPatients) * 100)
-                          : 0}%
-                      </span>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-
-              {/* Recent clinic activity */}
-              <Card className="flex flex-col gap-4">
-                <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Recent Clinic Activity</h3>
-                <div className="flex flex-col gap-3.5 font-semibold text-xs text-text-secondary leading-normal">
-                  {clinicScopeStats.recentActivity.length === 0 ? (
-                    <span className="text-text-muted">No recent activity for this clinic.</span>
-                  ) : (
-                    clinicScopeStats.recentActivity.slice(0, 6).map((log) => (
-                      <div key={log.id} className="flex gap-3 items-start border-b border-border-subtle/30 pb-2.5 last:border-0 last:pb-0">
-                        <span className="text-base select-none shrink-0">🛡️</span>
-                        <div className="flex flex-col gap-0.5 truncate">
-                          <div className="font-extrabold text-text-primary truncate">{log.action.replace(/_/g, ' ')}</div>
-                          <div className="text-[10px] text-text-secondary mt-0.5 truncate">{log.details}</div>
-                          <span className="text-[9px] text-text-muted mt-1">{new Date(log.createdAt).toLocaleTimeString()}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </Card>
-            </div>
-          ) : selectedClinicId && (clinicScopeLoading || !clinicScopeStats) ? (
-            <div className="flex flex-col gap-6 animate-fadeIn">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-28 rounded-2xl bg-bg-muted animate-pulse" />
-                ))}
-              </div>
-              <p className="text-xs font-bold text-text-muted animate-pulse">Loading clinic intelligence...</p>
-            </div>
-          ) : (
-          <div className="flex flex-col gap-8 animate-fadeIn">
-            
-            {/* KPI statistics cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatsCard
-                label="Total Clinics Registered"
-                value={stats.totalClinics}
-                change="All SaaS Tenants"
-                icon={<Building className="w-5 h-5 text-primary" />}
-              />
-              <StatsCard
-                label="Verified Live Clinics"
-                value={stats.verifiedClinics}
-                change={`${stats.pendingClinics} pending reviews`}
-                icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-              />
-              <StatsCard
-                label="Served Patients Today"
-                value={stats.servedTokens}
-                change="Successfully completed"
-                icon={<Users className="w-5 h-5 text-indigo-500" />}
-              />
-              <StatsCard
-                label="Suspended Clinics"
-                value={stats.suspendedClinics}
-                change="Due to documentation/billing issues"
-                icon={<Ban className="w-5 h-5 text-danger" />}
-              />
-            </div>
-
-            {/* Quick Summary Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              
-              {/* Left Column: Quick Action buttons & Status */}
-              <div className="lg:col-span-2 flex flex-col gap-8">
-                
-                {/* System status dashboard indicators */}
-                <Card className="flex flex-col gap-4">
-                  <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Central Telemetry & System status</h3>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-1">
-                    {[
-                      { service: 'Supabase DB Storage', status: 'Healthy', details: '99.98% uptime', color: 'text-emerald-500' },
-                      { service: 'Edge Engine Proxy', status: 'Healthy', details: '8ms avg latency', color: 'text-emerald-500' },
-                      { service: 'Real-time WebSocket Channel', status: 'Active', details: 'Supabase db-changes channel', color: 'text-emerald-500' },
-                      { service: 'Mail SMTP Relays', status: 'Healthy', details: 'Firebase trigger config', color: 'text-emerald-500' },
-                      { service: 'WhatsApp SMS Webhook', status: 'Configured', details: 'SMS Alerts Foundation', color: 'text-indigo-500' },
-                      { service: 'Platform Maintenance', status: platformSettings.maintenance ? 'ENABLED' : 'DISABLED', details: 'Global redirect policy', color: platformSettings.maintenance ? 'text-danger animate-pulse' : 'text-text-muted' },
-                    ].map((item, idx) => (
-                      <div key={idx} className="p-3.5 border border-border-subtle rounded-2xl bg-bg-surface flex flex-col gap-1 text-xs">
-                        <span className="font-extrabold text-text-primary truncate">{item.service}</span>
-                        <div className="flex items-center gap-1.5 mt-1 font-black">
-                          <span className={`w-2 h-2 rounded-full ${item.color.replace('text', 'bg')} shrink-0`} />
-                          <span className={item.color}>{item.status}</span>
-                        </div>
-                        <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5">{item.details}</span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-
-                {/* Growth overview card */}
-                <Card className="flex flex-col gap-4">
-                  <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">SaaS Platform Growth</h3>
-                  <div className="h-40 border border-dashed border-border-subtle bg-bg-muted/10 rounded-2xl flex items-center justify-center text-xs text-text-muted font-bold select-none h-44">
-                    📈 Monthly Registration surge: +24% YoY growth
-                  </div>
-                </Card>
-
-              </div>
-
-              {/* Right Column: Platform Audit Logs timeline */}
-              <div className="flex flex-col gap-8">
-                <Card className="flex flex-col gap-5">
-                  <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Platform Audit Timeline</h3>
-                  
-                  <div className="flex flex-col gap-4 font-semibold text-xs text-text-secondary leading-normal max-h-[420px] overflow-y-auto pr-1">
-                    {auditLogs.slice(0, 8).map((log) => (
-                      <div key={log.id} className="flex gap-3 items-start border-b border-border-subtle/30 pb-2.5 last:border-0 last:pb-0">
-                        <span className="text-base select-none shrink-0">🛡️</span>
-                        <div className="flex flex-col gap-0.5 truncate">
-                          <div className="font-extrabold text-text-primary truncate">{log.action.replace(/_/g, ' ')}</div>
-                          <div className="text-[10px] text-text-secondary mt-0.5 truncate">{log.details}</div>
-                          <span className="text-[9px] text-text-muted mt-1">{new Date(log.createdAt).toLocaleTimeString()}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </div>
-
-            </div>
-
-          </div>
-          ))}
+          <SuperOverviewTab
+            selectedClinicId={selectedClinicId}
+            setSelectedClinicId={setSelectedClinicId}
+            clinicScopeStats={clinicScopeStats}
+            clinicScopeLoading={clinicScopeLoading}
+            clinics={clinics}
+            stats={stats}
+            setActiveTab={setActiveTab}
+          />
+        )}
 
         {/* TAB 2: CLINICS DIRECTORY */}
         {activeTab === 'clinics' && (
@@ -1006,9 +823,7 @@ export default function SuperAdminDashboard() {
               />
 
               <div className="flex flex-col gap-3">
-                {clinics
-                  .filter((c) => c.name.toLowerCase().includes(clinicQuery.toLowerCase()) || c.ownerName?.toLowerCase().includes(clinicQuery.toLowerCase()) || c.city?.toLowerCase().includes(clinicQuery.toLowerCase()))
-                  .map((c) => (
+                {filteredClinics.map((c) => (
                     <button
                       key={c.id}
                       onClick={() => setSelectedClinic(c)}

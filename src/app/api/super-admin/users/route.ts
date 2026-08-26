@@ -81,6 +81,12 @@ export async function GET(request: Request) {
       })),
     ];
 
+    const pageParam = searchParams.get('page');
+    const limitParam = searchParams.get('limit');
+    
+    const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
+    const limit = limitParam ? Math.max(1, parseInt(limitParam, 10)) : 0;
+
     const filtered = users.filter((u) => {
       if (role && u.role !== role) return false;
       if (
@@ -96,9 +102,15 @@ export async function GET(request: Request) {
       return true;
     });
 
+    const total = filtered.length;
+    const paginated = limit > 0 ? filtered.slice((page - 1) * limit, page * limit) : filtered;
+
     return NextResponse.json({
-      users: filtered,
-      total: filtered.length,
+      users: paginated,
+      total,
+      page,
+      limit: limit || total,
+      totalPages: limit > 0 ? Math.ceil(total / limit) : 1,
     });
   } catch (error: unknown) {
     console.error('API Super Admin Users fetch error:', error);

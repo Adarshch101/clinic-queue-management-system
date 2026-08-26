@@ -1,13 +1,18 @@
 import type { Metadata } from 'next';
-import { Outfit } from 'next/font/google';
+import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import { AuthProvider } from '@/features/auth/context/AuthContext';
 import { MuiThemeProvider } from '@/components/providers/MuiThemeProvider';
 
-const outfit = Outfit({
-  subsets: ['latin'],
+const geistSans = Geist({
   variable: '--font-sans',
+  subsets: ['latin'],
+});
+
+const geistMono = Geist_Mono({
+  variable: '--font-mono',
+  subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
@@ -21,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" className={`${outfit.variable} h-full antialiased`}>
+    <html lang="en" data-scroll-behavior="smooth" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans antialiased text-foreground bg-background">
         <AuthProvider>
           <AppProvider>

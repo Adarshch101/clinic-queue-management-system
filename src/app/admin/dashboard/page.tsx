@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -27,6 +28,18 @@ import {
   FileText, Trash2, Upload, Play, Pause, ChevronRight
 } from 'lucide-react';
 import type { Doctor, Patient } from '@/lib/mockData';
+
+const OverviewTab = dynamic(
+  () => import('@/components/dashboard/admin/tabs/OverviewTab').then((m) => m.OverviewTab),
+  {
+    loading: () => (
+      <div className="h-64 rounded-2xl bg-bg-muted animate-pulse flex items-center justify-center text-xs font-bold text-text-muted">
+        Loading Overview Console...
+      </div>
+    ),
+    ssr: false,
+  }
+);
 import {
   validateName,
   validateEmail,
@@ -439,44 +452,57 @@ interface Holiday {
   }, [currentClinic?.id]);
 
   // Fetch clinic schedule & holidays
+  const fetchSchedule = useCallback(async () => {
+    setLoadingSchedule(true);
+    try {
+      const res = await fetch(`/api/clinic/working-hours?clinicId=${currentClinic?.id}`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScheduleData(data.workingHours || []);
+      }
+    } catch (e) {
+      console.error('Error loading schedule:', e);
+    } finally {
+      setLoadingSchedule(false);
+    }
+  }, [currentClinic?.id]);
+
+  const fetchHolidays = useCallback(async () => {
+    setLoadingHolidays(true);
+    try {
+      const res = await fetch(`/api/clinic/holidays?clinicId=${currentClinic?.id}`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHolidaysData(data.holidays || []);
+      }
+    } catch (e) {
+      console.error('Error loading holidays:', e);
+    } finally {
+      setLoadingHolidays(false);
+    }
+  }, [currentClinic?.id]);
+
   useEffect(() => {
-    const fetchSchedule = async () => {
-      setLoadingSchedule(true);
-      try {
-        const res = await fetch(`/api/clinic/working-hours?clinicId=${currentClinic?.id}`, {
-          headers: { 'Accept': 'application/json' }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setScheduleData(data.workingHours || []);
-        }
-      } catch (e) {
-        console.error('Error loading schedule:', e);
-      } finally {
-        setLoadingSchedule(false);
-      }
-    };
-
-    const fetchHolidays = async () => {
-      setLoadingHolidays(true);
-      try {
-        const res = await fetch(`/api/clinic/holidays?clinicId=${currentClinic?.id}`, {
-          headers: { 'Accept': 'application/json' }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setHolidaysData(data.holidays || []);
-        }
-      } catch (e) {
-        console.error('Error loading holidays:', e);
-      } finally {
-        setLoadingHolidays(false);
-      }
-    };
-
     fetchSchedule();
     fetchHolidays();
-  }, [currentClinic?.id]);
+  }, [fetchSchedule, fetchHolidays]);
+
+  const setScheduleField = (dayIndex: number, field: 'startTime' | 'endTime' | 'isClosed', value: string | boolean) => {
+    setScheduleForm((prev) => {
+      const currentDay = prev[dayIndex] || { startTime: '09:00', endTime: '17:00', isClosed: false };
+      return {
+        ...prev,
+        [dayIndex]: {
+          ...currentDay,
+          [field]: value,
+        },
+      };
+    });
+  };
 
   // Handle schedule form submit
   const handleScheduleSubmit = async (e: React.FormEvent) => {
@@ -725,8 +751,14 @@ interface Holiday {
   };
 
   // General clinic stats (calculated from live waiting list context)
-  const completedConsultations = queueTokens.filter(t => t.status === 'COMPLETED').length;
-  const waitingCount = queueTokens.filter(t => t.status === 'WAITING').length;
+  const completedConsultations = useMemo(
+    () => queueTokens.filter((t) => t.status === 'COMPLETED').length,
+    [queueTokens]
+  );
+  const waitingCount = useMemo(
+    () => queueTokens.filter((t) => t.status === 'WAITING').length,
+    [queueTokens]
+  );
 
   return (
     <RoleGuard roles={['ADMIN', 'SUPER_ADMIN']}>
@@ -748,153 +780,18 @@ interface Holiday {
 
         {/* TAB 1: OVERVIEW HOMEPAGE */}
         {activeTab === 'overview' && (
-          <div className="flex flex-col gap-8 animate-fadeIn">
-            
-            {/* Welcome banner */}
-            <div className="p-6 rounded-3xl bg-gradient-to-tr from-primary to-indigo-700 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 shadow shadow-primary/10">
-              <div>
-                <h2 className="text-xl font-black">Welcome Back, {profile?.name || 'Administrator'}</h2>
-                <p className="text-xs text-indigo-100 font-semibold mt-1">Operational Command console is online. Today is {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.</p>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl text-[10px] uppercase font-black tracking-wider shrink-0">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <span>Clinic Queue Open</span>
-              </div>
-            </div>
-
-            {/* Quick stats summary cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              <StatsCard
-                label="Patients Registered Today"
-                value={queueTokens.length}
-                change="+12% vs yesterday"
-                icon={<Users className="w-5 h-5" />}
-              />
-              <StatsCard
-                label="Lobby Queue Waitlist"
-                value={waitingCount}
-                change="Active serving"
-                icon={<Activity className="w-5 h-5 text-indigo-500" />}
-              />
-              <StatsCard
-                label="Completed Consultations"
-                value={completedConsultations}
-                change="Successfully check-out"
-                icon={<UserCheck className="w-5 h-5 text-emerald-500" />}
-              />
-              <StatsCard
-                label="Estimated Average Wait"
-                value={`${waitingCount * 12} mins`}
-                change="12m per consult duration"
-                icon={<Clock className="w-5 h-5 text-amber-500" />}
-              />
-            </div>
-
-            {/* Widgets Section Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              
-              {/* Left widgets list */}
-              <div className="lg:col-span-2 flex flex-col gap-8">
-                
-                {/* Quick actions panel */}
-                <Card className="flex flex-col gap-4">
-                  <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Operational Quick Actions</h3>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 mt-1">
-                    {[
-                      { label: 'Register Walk-In', link: 'queue', icon: <UserPlus className="w-4 h-4 text-emerald-500 shrink-0" /> },
-                      { label: 'Pause Lobby Queue', action: () => pauseQueue(doctors[0]?.id), icon: <Pause className="w-4 h-4 text-amber-500 shrink-0" /> },
-                      { label: 'Resume Lobby Queue', action: () => resumeQueue(doctors[0]?.id), icon: <Play className="w-4 h-4 text-emerald-500 shrink-0" /> },
-                      { label: 'Weekly Hours Config', link: 'clinic', icon: <Calendar className="w-4 h-4 text-primary shrink-0" /> },
-                      { label: 'Physicians List', link: 'doctors', icon: <Building className="w-4 h-4 text-primary shrink-0" /> },
-                      { label: 'Verification Center', link: 'documents', icon: <FileText className="w-4 h-4 text-primary shrink-0" /> },
-                    ].map((actItem, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          if (actItem.link) setActiveTab(actItem.link);
-                          if (actItem.action) actItem.action();
-                        }}
-                        className="p-3.5 border border-border-subtle rounded-2xl bg-bg-surface hover:bg-bg-muted/30 hover:shadow-sm text-left text-xs font-bold text-text-secondary flex items-center gap-2.5 transition active:scale-95"
-                      >
-                        {actItem.icon}
-                        <span>{actItem.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </Card>
-
-                {/* Physicians roster summary widget */}
-                <Card className="flex flex-col gap-4">
-                  <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Duty Physicians waitlist overview</h3>
-                  
-                  <div className="flex flex-col gap-3 mt-1">
-                    {doctors.map((doc) => {
-                      const docQueue = queueTokens.filter(t => t.doctorId === doc.id && t.status === 'WAITING');
-                      const docServing = queueTokens.find(t => t.doctorId === doc.id && (t.status === 'CALLED' || t.status === 'IN_CONSULTATION'));
-                      return (
-                        <div key={doc.id} className="p-3.5 rounded-2xl border border-border-subtle bg-bg-surface flex items-center justify-between gap-4 text-xs font-bold">
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl">🩺</span>
-                            <div>
-                              <div className="text-text-primary">{doc.name}</div>
-                              <div className="text-[10px] text-text-muted mt-0.5">{doc.specialization} • Room {doc.roomNumber}</div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-4">
-                            <div className="flex flex-col items-end text-right">
-                              <span className="text-[9px] uppercase text-text-muted">Serving Ticket</span>
-                              <span className="text-xs text-primary font-black mt-0.5">{docServing?.tokenNumber || 'None'}</span>
-                            </div>
-
-                            <div className="flex flex-col items-end text-right border-l border-border-subtle/40 pl-4">
-                              <span className="text-[9px] uppercase text-text-muted">Waiting List</span>
-                              <span className="text-xs text-text-primary font-black mt-0.5">{docQueue.length} patients</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-
-              </div>
-
-              {/* Right widgets list */}
-              <div className="flex flex-col gap-8">
-                
-                {/* Recent Activities audit logs timeline - SUPER_ADMIN ONLY */}
-                {profile?.role === 'SUPER_ADMIN' && (
-                  <Card className="flex flex-col gap-5">
-                    <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Recent Security Activity logs</h3>
-                    
-                    {loadingStats ? (
-                      <div className="text-center py-6 text-xs text-text-muted">Loading logs...</div>
-                    ) : dashboardStats?.recentActivity?.length === 0 ? (
-                      <div className="text-center py-6 text-xs text-text-muted">No logs recorded.</div>
-                    ) : (
-                      <div className="flex flex-col gap-4 font-semibold text-xs text-text-secondary leading-normal">
-                        {dashboardStats?.recentActivity?.map((log) => (
-                          <div key={log.id} className="flex gap-3 items-start border-b border-border-subtle/30 pb-2.5 last:border-0 last:pb-0">
-                            <span className="text-base select-none shrink-0">📝</span>
-                            <div className="flex flex-col gap-0.5 truncate">
-                              <div className="font-extrabold text-text-primary truncate">{log.action.replace('_', ' ')}</div>
-                              <div className="text-[10px] text-text-secondary truncate">{log.details}</div>
-                              <span className="text-[9px] text-text-muted mt-1">{new Date(log.createdAt).toLocaleTimeString()}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </Card>
-                )}
-
-              </div>
-
-            </div>
-
-          </div>
+          <OverviewTab
+            profile={profile}
+            queueTokens={queueTokens}
+            doctors={doctors}
+            waitingCount={waitingCount}
+            completedConsultations={completedConsultations}
+            loadingStats={loadingStats}
+            dashboardStats={dashboardStats}
+            setActiveTab={setActiveTab}
+            pauseQueue={pauseQueue}
+            resumeQueue={resumeQueue}
+          />
         )}
 
         {/* TAB 2: LIVE QUEUE MODULE */}
@@ -1993,7 +1890,7 @@ interface Holiday {
                               value={existingHours.endTime}
                               onChange={(e) => setScheduleField(dayIndex, 'endTime', e.target.value)}
                               className="flex-1 rounded-xl border border-border-subtle bg-bg-surface text-xs"
-                            </Input>
+                            />
                           </div>
                           <div className="flex items-center gap-2">
                             <Input
@@ -2036,14 +1933,14 @@ interface Holiday {
                   <div className="grid grid-cols-2 gap-3">
                     <Input
                       placeholder="YYYY-MM-DD"
-                      value=holidayFormDate
+                      value={holidayFormDate}
                       onChange={(e) => setHolidayFormDate(e.target.value)}
                       className="rounded-xl border border-border-subtle bg-bg-surface text-xs"
                       required
                     />
                     <Input
                       placeholder="Description"
-                      value=holidayFormDesc
+                      value={holidayFormDesc}
                       onChange={(e) => setHolidayFormDesc(e.target.value)}
                       className="rounded-xl border border-border-subtle bg-bg-surface text-xs"
                       required
