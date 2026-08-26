@@ -186,12 +186,38 @@ export default function AdminDashboard() {
   const [staffRoom, setStaffRoom] = useState('Room 101');
   const [staffLoading, setStaffLoading] = useState(false);
 
-  // Clinic profile editing states
+  interface WorkingHour {
+  id: string;
+  clinicId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isClosed: boolean;
+}
+
+interface Holiday {
+  id: string;
+  clinicId: string;
+  date: string;
+  description: string;
+  isClinicClosed: boolean;
+}
+
+// Clinic profile editing states
   const [profileName, setProfileName] = useState(currentClinic?.name || '');
   const [profileTagline, setProfileTagline] = useState('');
   const [profileDesc, setProfileDesc] = useState('');
   const [profileAddress, setProfileAddress] = useState(currentClinic?.address || '');
   const [profileCity, setProfileCity] = useState(currentClinic?.city || '');
+
+  // Clinic schedule & holidays state
+  const [scheduleData, setScheduleData] = useState<WorkingHour[]>([]);
+  const [holidaysData, setHolidaysData] = useState<Holiday[]>([]);
+  const [loadingSchedule, setLoadingSchedule] = useState(true);
+  const [loadingHolidays, setLoadingHolidays] = useState(true);
+  const [scheduleForm, setScheduleForm] = useState<Record<number, { startTime: string; endTime: string; isClosed: boolean }>>({});
+  const [holidayFormDate, setHolidayFormDate] = useState('');
+  const [holidayFormDesc, setHolidayFormDesc] = useState('');
   const [profileState] = useState(currentClinic?.state || '');
   const [profilePincode, setProfilePincode] = useState(currentClinic?.pincode || '');
   const [profileServices, setProfileServices] = useState('');
@@ -411,6 +437,108 @@ export default function AdminDashboard() {
     const id = setTimeout(() => fetchDashboardStats(), 0);
     return () => clearTimeout(id);
   }, [currentClinic?.id]);
+
+  // Fetch clinic schedule & holidays
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      setLoadingSchedule(true);
+      try {
+        const res = await fetch(`/api/clinic/working-hours?clinicId=${currentClinic?.id}`, {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setScheduleData(data.workingHours || []);
+        }
+      } catch (e) {
+        console.error('Error loading schedule:', e);
+      } finally {
+        setLoadingSchedule(false);
+      }
+    };
+
+    const fetchHolidays = async () => {
+      setLoadingHolidays(true);
+      try {
+        const res = await fetch(`/api/clinic/holidays?clinicId=${currentClinic?.id}`, {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setHolidaysData(data.holidays || []);
+        }
+      } catch (e) {
+        console.error('Error loading holidays:', e);
+      } finally {
+        setLoadingHolidays(false);
+      }
+    };
+
+    fetchSchedule();
+    fetchHolidays();
+  }, [currentClinic?.id]);
+
+  // Handle schedule form submit
+  const handleScheduleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStaffErrors({});
+    try {
+      const schedulePayload = Object.entries(scheduleForm).map(([dayIndex, fields]) => ({
+        clinicId: currentClinic?.id || '',
+        dayOfWeek: parseInt(dayIndex),
+        startTime: fields.startTime,
+        endTime: fields.endTime,
+        isClosed: fields.isClosed,
+      }));
+
+      const res = await fetch('/api/clinic/working-hours', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clinicId: currentClinic?.id, workingHours: schedulePayload }),
+      });
+
+      if (res.ok) {
+        alert('Schedule saved successfully!');
+        await fetchSchedule();
+      } else {
+        alert('Failed to save schedule.');
+      }
+    } catch {
+      alert('Error saving schedule.');
+    }
+  };
+
+  // Handle holiday form submit
+  const handleHolidaySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!holidayFormDate || !holidayFormDesc) {
+      alert('Please fill in all fields');
+      return;
+    }
+    try {
+      const res = await fetch('/api/clinic/holidays', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clinicId: currentClinic?.id,
+          date: holidayFormDate,
+          description: holidayFormDesc,
+          isClinicClosed: false,
+        }),
+      });
+
+      if (res.ok) {
+        alert('Holiday added successfully!');
+        await fetchHolidays();
+        setHolidayFormDate('');
+        setHolidayFormDesc('');
+      } else {
+        alert('Failed to add holiday.');
+      }
+    } catch {
+      alert('Error adding holiday.');
+    }
+  };
 
   // Fetch pending review list for Super Admin
   const fetchReviewClinics = async () => {
@@ -1840,44 +1968,99 @@ export default function AdminDashboard() {
               <Card className="flex flex-col gap-5">
                 <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Weekly operational schedule</h3>
                 
-                <div className="flex flex-col gap-3.5 mt-1 text-xs font-semibold text-text-secondary">
-                  {[
-                    { day: 'Monday', hours: '09:00 AM - 05:00 PM', closed: false },
-                    { day: 'Tuesday', hours: '09:00 AM - 05:00 PM', closed: false },
-                    { day: 'Wednesday', hours: '09:00 AM - 05:00 PM', closed: false },
-                    { day: 'Thursday', hours: '09:00 AM - 05:00 PM', closed: false },
-                    { day: 'Friday', hours: '09:00 AM - 05:00 PM', closed: false },
-                    { day: 'Saturday', hours: '09:00 AM - 01:00 PM', closed: false },
-                    { day: 'Sunday', hours: 'Closed', closed: true },
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center border-b border-border-subtle/30 pb-2.5 last:border-0 last:pb-0">
-                      <span>{item.day}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[11px] text-text-secondary font-bold">{item.hours}</span>
-                        <Badge variant={item.closed ? 'primary' : 'success'} size="sm">
-                          {item.closed ? 'Closed' : 'Open'}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {/* Schedule form */}
+                <form onSubmit={handleScheduleSubmit} className="flex flex-col gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
+                    {[1, 2, 3, 4, 5, 6, 0].map(dayIndex => {
+                      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                      const dayName = dayNames[dayIndex];
+                      const existing = scheduleData.find(h => h.dayOfWeek === dayIndex);
+                      const isClosed = existing ? existing.isClosed : dayName === 'Sunday';
+                      const existingHours = existing ? { startTime: existing.startTime, endTime: existing.endTime } : isClosed ? { startTime: '', endTime: '' } : { startTime: '09:00', endTime: '17:00' };
+                      
+                      return (
+                        <div key={dayIndex} className="flex flex-col gap-2">
+                          <label className="text-xs font-semibold text-text-secondary"> {dayName}</label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="time"
+                              value={existingHours.startTime}
+                              onChange={(e) => setScheduleField(dayIndex, 'startTime', e.target.value)}
+                              className="flex-1 rounded-xl border border-border-subtle bg-bg-surface text-xs"
+                            />
+                            <Input
+                              type="time"
+                              value={existingHours.endTime}
+                              onChange={(e) => setScheduleField(dayIndex, 'endTime', e.target.value)}
+                              className="flex-1 rounded-xl border border-border-subtle bg-bg-surface text-xs"
+                            </Input>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="checkbox"
+                              checked={isClosed}
+                              onChange={(e) => setScheduleField(dayIndex, 'isClosed', e.target.checked)}
+                              className="w-4 h-4 rounded border-border-subtle text-primary focus:ring-primary"
+                            />
+                            <span className="text-xs text-text-secondary">Closed</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-3 mt-4">
+                    <Button type="submit" variant="primary" className="flex-1">
+                      Save Schedule
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setScheduleData([])}
+                      className="flex-1 text-xs"
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                </form>
               </Card>
             </div>
 
-            {/* Column 3: Holidays calendar placeholders */}
+            {/* Column 3: Holidays calendar */}
             <div className="flex flex-col gap-6">
               <Card className="flex flex-col gap-4">
                 <h3 className="font-extrabold text-sm text-text-primary border-b border-border-subtle/50 pb-3">Scheduled Clinic Holidays</h3>
                 
+                {/* Holidays form */}
+                <form onSubmit={handleHolidaySubmit} className="flex flex-col gap-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      placeholder="YYYY-MM-DD"
+                      value=holidayFormDate
+                      onChange={(e) => setHolidayFormDate(e.target.value)}
+                      className="rounded-xl border border-border-subtle bg-bg-surface text-xs"
+                      required
+                    />
+                    <Input
+                      placeholder="Description"
+                      value=holidayFormDesc
+                      onChange={(e) => setHolidayFormDesc(e.target.value)}
+                      className="rounded-xl border border-border-subtle bg-bg-surface text-xs"
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-3 mt-4">
+                    <Button type="submit" variant="primary" className="flex-1">
+                      Add Holiday
+                    </Button>
+                  </div>
+                </form>
+                
                 <div className="flex flex-col gap-3 text-xs font-semibold text-text-secondary leading-relaxed mt-1">
-                  {[
-                    { date: '2026-09-07', desc: 'Labor Day' },
-                    { date: '2026-11-26', desc: 'Thanksgiving Day' },
-                    { date: '2026-12-25', desc: 'Christmas Day' },
-                  ].map((hol, idx) => (
+                  {holidaysData.map((hol, idx) => (
                     <div key={idx} className="p-3.5 border border-border-subtle bg-bg-surface rounded-2xl flex justify-between items-center font-bold">
                       <div>
-                        <div className="text-text-primary">{hol.desc}</div>
+                        <div className="text-text-primary">{hol.description}</div>
                         <span className="text-[10px] text-text-muted mt-0.5">{hol.date}</span>
                       </div>
                       <Badge variant="primary" size="sm">Holiday</Badge>
