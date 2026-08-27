@@ -5,6 +5,10 @@ import dynamic from 'next/dynamic';
 import { useApp } from '@/context/AppContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { RoleGuard } from '@/components/guards/RoleGuard';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Stethoscope, Users, History, Pause, Play, Clock, AlertTriangle } from 'lucide-react';
+
 import type { Doctor, MedicalReport } from '@/lib/mockData';
 import { validateRequired, hasErrors, type ValidationErrors } from '@/lib/validation';
 
@@ -307,6 +311,121 @@ export default function DoctorDashboard() {
               </p>
             </div>
 
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Queue controls:</span>
+              {isPaused ? (
+                <Button
+                  onClick={handleResumeCallback}
+                  variant="primary"
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  isLoading={actionLoading}
+                >
+                  <Play className="w-3.5 h-3.5" /> Resume Queue
+                </Button>
+              ) : (
+                <Button
+                  onClick={handlePauseCallback}
+                  variant="outline"
+                  size="sm"
+                  className="border-warning text-warning hover:bg-warning-muted"
+                  isLoading={actionLoading}
+                >
+                  <Pause className="w-3.5 h-3.5" /> Pause Queue
+                </Button>
+              )}
+              <Button
+                onClick={handleAddDelayCallback}
+                variant="secondary"
+                size="sm"
+                isLoading={actionLoading}
+              >
+                <Clock className="w-3.5 h-3.5" /> +10m Delay
+              </Button>
+            </div>
+          </div>
+
+          {/* Pending Emergency Alert Banner (if any emergency requests are waiting) */}
+          {pendingEmergencies.length > 0 && (
+            <div className="p-4 rounded-2xl bg-danger-muted/30 border border-danger/30 flex items-center justify-between gap-4 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-danger shrink-0 animate-pulse" />
+                <span className="text-xs font-bold text-text-primary">
+                  {pendingEmergencies.length} Emergency Priority Request{pendingEmergencies.length > 1 ? 's' : ''} awaiting your approval.
+                </span>
+              </div>
+              <Button
+                onClick={() => {
+                  window.location.hash = '#queue';
+                  setActiveTab('queue');
+                }}
+                variant="primary"
+                size="sm"
+                className="bg-danger hover:bg-danger/90 text-white font-bold text-xs"
+              >
+                Review Emergencies
+              </Button>
+            </div>
+          )}
+
+          {/* Tab Navigation Pill Bar */}
+          <div className="flex items-center gap-2 border-b border-border-subtle pb-3 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '#consultation';
+                setActiveTab('consultation');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+                activeTab === 'consultation'
+                  ? 'bg-primary text-white shadow-md shadow-primary/20'
+                  : 'bg-bg-surface text-text-secondary hover:bg-bg-muted/60 hover:text-text-primary border border-border-subtle'
+              }`}
+            >
+              <Stethoscope className="w-4 h-4" />
+              <span>Consultation Room</span>
+              {activeToken && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '#queue';
+                setActiveTab('queue');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+                activeTab === 'queue'
+                  ? 'bg-primary text-white shadow-md shadow-primary/20'
+                  : 'bg-bg-surface text-text-secondary hover:bg-bg-muted/60 hover:text-text-primary border border-border-subtle'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Room Waitlist</span>
+              <Badge variant={activeTab === 'queue' ? 'secondary' : 'primary'} className="text-[10px]">
+                {upcomingQueue.length}
+              </Badge>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '#history';
+                setActiveTab('history');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+                activeTab === 'history'
+                  ? 'bg-primary text-white shadow-md shadow-primary/20'
+                  : 'bg-bg-surface text-text-secondary hover:bg-bg-muted/60 hover:text-text-primary border border-border-subtle'
+              }`}
+            >
+              <History className="w-4 h-4" />
+              <span>Consultation History</span>
+              <Badge variant="secondary" className="text-[10px]">
+                {completedToday.length}
+              </Badge>
+            </button>
           </div>
 
           {/* TAB CONTENT AREA */}
