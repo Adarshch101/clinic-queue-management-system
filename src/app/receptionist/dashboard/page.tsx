@@ -5,6 +5,9 @@ import dynamic from 'next/dynamic';
 import { useApp } from '@/context/AppContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { RoleGuard } from '@/components/guards/RoleGuard';
+import { Badge } from '@/components/ui/Badge';
+import { Select } from '@/components/ui/Select';
+import { UserPlus, CalendarCheck, Activity } from 'lucide-react';
 import type { QueueToken } from '@/lib/mockData';
 import {
   validateName,
@@ -185,6 +188,76 @@ export default function ReceptionistDashboard() {
                 Manage appointments check-in, register walk-ins, and orchestrate live doctor queues.
               </p>
             </div>
+
+            <div className="w-full sm:w-64">
+              <Select
+                value={selectedDoctorId}
+                onChange={(e) => setSelectedDoctorId(e.target.value)}
+                options={[
+                  { value: 'all', label: 'All Physicians' },
+                  ...doctors
+                    .filter((d) => d.clinicId === currentClinic?.id)
+                    .map((d) => ({ value: d.id, label: `${d.name} (Room ${d.roomNumber || '101'})` })),
+                ]}
+              />
+            </div>
+          </div>
+
+          {/* Tab Navigation Pill Bar */}
+          <div className="flex items-center gap-2 border-b border-border-subtle pb-3 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '#register';
+                setActiveTab('register');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+                activeTab === 'register'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'bg-bg-surface text-text-secondary hover:bg-bg-muted/60 hover:text-text-primary border border-border-subtle'
+              }`}
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Walk-In Registration</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '#bookings';
+                setActiveTab('bookings');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+                activeTab === 'bookings'
+                  ? 'bg-primary text-white shadow-md shadow-primary/20'
+                  : 'bg-bg-surface text-text-secondary hover:bg-bg-muted/60 hover:text-text-primary border border-border-subtle'
+              }`}
+            >
+              <CalendarCheck className="w-4 h-4" />
+              <span>Appointments Check-In</span>
+              <Badge variant={activeTab === 'bookings' ? 'secondary' : 'primary'} className="text-[10px]">
+                {filteredAppointments.length}
+              </Badge>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.hash = '#waitlist';
+                setActiveTab('waitlist');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+                activeTab === 'waitlist'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'bg-bg-surface text-text-secondary hover:bg-bg-muted/60 hover:text-text-primary border border-border-subtle'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              <span>Live Lobby Queue</span>
+              <Badge variant="secondary" className="text-[10px]">
+                {activeQueues.length}
+              </Badge>
+            </button>
           </div>
 
           {/* TAB CONTENT AREA */}

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/apiAuth';
+import { requireRole } from '@/lib/apiAuth';
 
 // Resolves the signed-in user's Doctor record (if any). Used by the doctor
 // dashboard to identify "my doctor" by record id instead of the auth userId.
 // Returns null for users without a Doctor row (e.g. admin previewing the page).
 export async function GET(request: Request) {
-  const auth = requireAuth(request);
+  const auth = requireRole(request, ['DOCTOR', 'ADMIN', 'SUPER_ADMIN']);
   if (auth instanceof NextResponse) return auth;
   const { session } = auth;
 
